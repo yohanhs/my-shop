@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums simulados con modelos (SQLite no soporta enums nativos) ───
+// Usamos constantes en la app y validación a nivel de código.
+
+model Rol {
+  id      Int       @id @default(autoincrement())
+  nombre  String    @unique // Admin, Vendedor, Inventarista
+  usuarios Usuario[]
+}
+
+model Usuario {
+  id            Int               @id @default(autoincrement())
+  nombre        String
+  username      String            @unique
+  passwordHash  String            @map("password_hash")
+  rolId         Int
+  status        String            @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  rol               Rol                @relation(fields: [rolId], references: [id])
+  movimientosStock  MovimientoStock[]
+
+  @@map("usuarios")
+}
+
+model Producto {
+  id            Int               @id @default(autoincrement())
+  nombre        String
+  sku           String            @unique
+  precioCosto   Float             @map("precio_costo")
+  precioVenta   Float             @map("precio_venta")
+  stockActual   Int               @default(0) @map("stock_actual")
+  stockMinimo   Int               @default(0) @map("stock_minimo")
+  imagenPath    String?           @map("imagen_path")
+  status        String            @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  ventaDetalles     VentaDetalle[]
+  movimientosStock  MovimientoStock[]
+
+  @@map("productos")
+}
+
+model Venta {
+  id          Int            @id @default(autoincrement())
+  fecha       DateTime       @default(now())
+  total       Float
+  metodoPago  String         @map("metodo_pago") // EFECTIVO | TARJETA | TRANSFERENCIA
+  estado      String         @default("ACTIVA") // ACTIVA | ANULADA
+  ticketFolio String?        @map("ticket_folio")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  detalles VentaDetalle[]
+
+  @@map("ventas")
+}
+
+model VentaDetalle {
+  id                          Int      @id @default(autoincrement())
+  ventaId                     Int      @map("venta_id")
+  productoId                  Int      @map("producto_id")
+  cantidad                    Int
+  precioAplicado              Float    @map("precio_aplicado")
+  precioCostoUnitarioHistorico Float   @map("precio_costo_unitario_historico")
+
+  venta    Venta    @relation(fields: [ventaId], references: [id])
+  producto Producto @relation(fields: [productoId], references: [id])
+
+  @@map("venta_detalles")
+}
+
+model Gasto {
+  id        Int      @id @default(autoincrement())
+  concepto  String
+  monto     Float
+  fecha     DateTime @default(now())
+  categoria String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("gastos")
+}
+
+model MovimientoStock {
+  id          Int       @id @default(autoincrement())
+  productoId  Int       @map("producto_id")
+  tipo        String    // ENTRADA | SALIDA
+  cantidad    Int
+  motivo      String    // COMPRA | VENTA | AJUSTE
+  fecha       DateTime  @default(now())
+  usuarioId   Int       @map("usuario_id")
+  proveedorId Int?      @map("proveedor_id")
+
+  producto  Producto   @relation(fields: [productoId], references: [id])
+  usuario   Usuario    @relation(fields: [usuarioId], references: [id])
+  proveedor Proveedor? @relation(fields: [proveedorId], references: [id])
+
+  @@map("movimientos_stock")
+}
+
+model Configuracion {
+  id                 Int     @id @default(autoincrement())
+  nombreTienda       String  @map("nombre_tienda")
+  moneda             String  @default("MXN")
+  impuestoPorcentaje Float   @default(16) @map("impuesto_porcentaje")
+  logoPath           String? @map("logo_path")
+
+  @@map("configuracion")
+}
+
+model Proveedor {
+  id        Int     @id @default(autoincrement())
+  nombre    String
+  telefono  String?
+  empresa   String?
+  direccion String?
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  movimientosStock MovimientoStock[]
+
+  @@map("proveedores")
+}
