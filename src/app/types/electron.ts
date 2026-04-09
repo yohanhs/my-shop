@@ -2,6 +2,7 @@ export interface Producto {
   id: number;
   nombre: string;
   sku: string;
+  descripcion: string | null;
   precioCosto: number;
   precioVenta: number;
   stockActual: number;
@@ -15,6 +16,7 @@ export interface Producto {
 export interface ProductoInput {
   nombre: string;
   sku: string;
+  descripcion?: string | null;
   precioCosto: number;
   precioVenta: number;
   stockActual?: number;
@@ -25,6 +27,7 @@ export interface ProductoInput {
 export interface ProductoUpdateInput {
   nombre?: string;
   sku?: string;
+  descripcion?: string | null;
   precioCosto?: number;
   precioVenta?: number;
   stockActual?: number;
@@ -33,8 +36,44 @@ export interface ProductoUpdateInput {
   status?: string;
 }
 
+export type ProductoStatusFilter = '' | 'ACTIVE' | 'INACTIVE';
+
+/** Filtros del listado paginado (texto vacío = sin filtrar ese campo). */
+export interface ProductoListFilters {
+  nombre: string;
+  sku: string;
+  status: ProductoStatusFilter;
+  /** Fecha local YYYY-MM-DD */
+  createdFrom: string;
+  createdTo: string;
+  updatedFrom: string;
+  updatedTo: string;
+}
+
+export const defaultProductoListFilters: ProductoListFilters = {
+  nombre: '',
+  sku: '',
+  status: '',
+  createdFrom: '',
+  createdTo: '',
+  updatedFrom: '',
+  updatedTo: '',
+};
+
+export interface ProductoListPagedResult {
+  items: Producto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type ProductoListPagedParams = {
+  page: number;
+  pageSize: number;
+} & ProductoListFilters;
+
 export interface ProductoApi {
-  getAll: () => Promise<Producto[]>;
+  listPaged: (params: ProductoListPagedParams) => Promise<ProductoListPagedResult>;
   getById: (id: number) => Promise<Producto | null>;
   create: (data: ProductoInput) => Promise<Producto>;
   update: (id: number, data: ProductoUpdateInput) => Promise<Producto>;
@@ -50,3 +89,5 @@ declare global {
     api: ElectronApi;
   }
 }
+
+export {};

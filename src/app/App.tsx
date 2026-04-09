@@ -1,24 +1,38 @@
-import { useEffect } from 'react';
-import { useProductStore } from './store/useProductStore';
+import { HashRouter, Route, Routes } from 'react-router-dom';
+
+import { AppShell } from './components/layout/AppShell';
+import { HomePage } from './pages/HomePage';
+import { PlaceholderPage } from './pages/PlaceholderPage';
+import { ProductoDetallePage } from './pages/ProductoDetallePage';
 import { ProductosPage } from './pages/ProductosPage';
 
 export default function App() {
-  const fetchProductos = useProductStore((s) => s.fetchProductos);
-
-  useEffect(() => {
-    fetchProductos();
-  }, [fetchProductos]);
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Mi Tienda</h1>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <ProductosPage />
-      </main>
-    </div>
+    <HashRouter>
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route index element={<HomePage />} />
+          <Route path="productos/:id" element={<ProductoDetallePage />} />
+          <Route path="productos" element={<ProductosPage />} />
+          <Route
+            path="ventas"
+            element={<PlaceholderPage title="Ventas" description="Aquí podrás registrar y consultar ventas." />}
+          />
+          <Route
+            path="gastos"
+            element={<PlaceholderPage title="Gastos" description="Aquí podrás llevar el control de egresos." />}
+          />
+          <Route
+            path="configuracion"
+            element={
+              <PlaceholderPage
+                title="Configuración"
+                description="Datos de la tienda, moneda e impuestos."
+              />
+            }
+          />
+        </Route>
+      </Routes>
+    </HashRouter>
   );
 }

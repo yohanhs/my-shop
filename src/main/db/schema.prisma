@@ -36,6 +36,7 @@ model Producto {
   id            Int               @id @default(autoincrement())
   nombre        String
   sku           String            @unique
+  descripcion   String?
   precioCosto   Float             @map("precio_costo")
   precioVenta   Float             @map("precio_venta")
   stockActual   Int               @default(0) @map("stock_actual")

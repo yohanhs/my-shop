@@ -52,10 +52,12 @@ async function applyMigrations(client: PrismaClient): Promise<void> {
 
     const sql = fs.readFileSync(sqlPath, 'utf-8');
     // Separar por statements y ejecutar uno a uno
+    // No filtrar por startsWith('--'): cada sentencia de Prisma empieza con
+    // "-- CreateTable" en la misma pieza que el CREATE; eso eliminaba todo el SQL.
     const statements = sql
       .split(';')
       .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'));
+      .filter((s) => s.length > 0);
 
     for (const stmt of statements) {
       await client.$executeRawUnsafe(stmt);
@@ -64,6 +66,22 @@ async function applyMigrations(client: PrismaClient): Promise<void> {
   }
 
   console.log('[DB] Todas las migraciones aplicadas.');
+}
+
+/** BD ya creadas antes de añadir columnas nuevas: ALTER si falta `descripcion`. */
+async function ensureProductoDescripcionColumn(client: PrismaClient): Promise<void> {
+  const tables: Array<{ name: string }> = await client.$queryRawUnsafe(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='productos'`,
+  );
+  if (tables.length === 0) return;
+
+  const columns = await client.$queryRawUnsafe<Array<{ name: string }>>(
+    `PRAGMA table_info(productos)`,
+  );
+  if (columns.some((c) => c.name === 'descripcion')) return;
+
+  await client.$executeRawUnsafe(`ALTER TABLE productos ADD COLUMN descripcion TEXT`);
+  console.log('[DB] Columna productos.descripcion añadida (migración incremental).');
 }
 
 export function getPrismaClient(): PrismaClient {
@@ -84,6 +102,7 @@ export async function initializeDatabase(): Promise<PrismaClient> {
   const client = getPrismaClient();
   await client.$connect();
   await applyMigrations(client);
+  await ensureProductoDescripcionColumn(client);
   return client;
 }
 

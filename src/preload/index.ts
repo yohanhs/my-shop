@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 export interface ProductoInput {
   nombre: string;
   sku: string;
+  descripcion?: string | null;
   precioCosto: number;
   precioVenta: number;
   stockActual?: number;
@@ -13,6 +14,7 @@ export interface ProductoInput {
 export interface ProductoUpdateInput {
   nombre?: string;
   sku?: string;
+  descripcion?: string | null;
   precioCosto?: number;
   precioVenta?: number;
   stockActual?: number;
@@ -22,7 +24,7 @@ export interface ProductoUpdateInput {
 }
 
 const productoApi = {
-  getAll: () => ipcRenderer.invoke('producto:getAll'),
+  listPaged: (params: Record<string, unknown>) => ipcRenderer.invoke('producto:listPaged', params),
   getById: (id: number) => ipcRenderer.invoke('producto:getById', id),
   create: (data: ProductoInput) => ipcRenderer.invoke('producto:create', data),
   update: (id: number, data: ProductoUpdateInput) => ipcRenderer.invoke('producto:update', id, data),

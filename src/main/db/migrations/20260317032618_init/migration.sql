@@ -22,6 +22,7 @@ CREATE TABLE "productos" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "nombre" TEXT NOT NULL,
     "sku" TEXT NOT NULL,
+    "descripcion" TEXT,
     "precio_costo" REAL NOT NULL,
     "precio_venta" REAL NOT NULL,
     "stock_actual" INTEGER NOT NULL DEFAULT 0,
