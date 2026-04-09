@@ -5,6 +5,8 @@ import { HomePage } from './pages/HomePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { ProductoDetallePage } from './pages/ProductoDetallePage';
 import { ProductosPage } from './pages/ProductosPage';
+import { RolesPage } from './pages/RolesPage';
+import { UsuariosPage } from './pages/UsuariosPage';
 
 export default function App() {
   return (
@@ -14,6 +16,8 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="productos/:id" element={<ProductoDetallePage />} />
           <Route path="productos" element={<ProductosPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="roles" element={<RolesPage />} />
           <Route
             path="ventas"
             element={<PlaceholderPage title="Ventas" description="Aquí podrás registrar y consultar ventas." />}

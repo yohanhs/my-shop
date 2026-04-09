@@ -2,65 +2,60 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 
 import {
-  defaultProductoListFilters,
-  type Producto,
-  type ProductoInput,
-  type ProductoListFilters,
-  type ProductoListPagedParams,
-  type ProductoUpdateInput,
+  defaultUsuarioListFilters,
+  type Usuario,
+  type UsuarioInput,
+  type UsuarioListFilters,
+  type UsuarioListPagedParams,
+  type UsuarioUpdateInput,
 } from '@/types/electron';
 
 const NO_ELECTRON_TOAST = 'Ejecuta la app con Electron (npm run dev:electron).';
 
 function getApi() {
-  if (typeof window !== 'undefined' && window.api?.producto) {
-    return window.api.producto;
+  if (typeof window !== 'undefined' && window.api?.usuario) {
+    return window.api.usuario;
   }
   return null;
 }
 
-function listParams(page: number, pageSize: number, filters: ProductoListFilters): ProductoListPagedParams {
-  return {
-    page,
-    pageSize,
-    ...filters,
-  };
+function listParams(page: number, pageSize: number, filters: UsuarioListFilters): UsuarioListPagedParams {
+  return { page, pageSize, ...filters };
 }
 
-interface ProductStore {
-  productos: Producto[];
+interface UsuarioStore {
+  usuarios: Usuario[];
   total: number;
   page: number;
   pageSize: number;
-  listFilters: ProductoListFilters;
+  listFilters: UsuarioListFilters;
   loading: boolean;
-  /** true después de al menos un listado exitoso (incluye recargas silenciosas) */
   listLoadOk: boolean;
   error: string | null;
-  fetchProductos: (options?: { silent?: boolean; page?: number; pageSize?: number }) => Promise<void>;
-  applyListFilters: (filters: ProductoListFilters) => Promise<void>;
+  fetchUsuarios: (options?: { silent?: boolean; page?: number; pageSize?: number }) => Promise<void>;
+  applyListFilters: (filters: UsuarioListFilters) => Promise<void>;
   resetListFilters: () => Promise<void>;
   setPage: (page: number) => Promise<void>;
   setPageSize: (pageSize: number) => Promise<void>;
   clearError: () => void;
-  createProducto: (data: ProductoInput) => Promise<boolean>;
-  updateProducto: (id: number, data: ProductoUpdateInput) => Promise<boolean>;
-  deleteProducto: (id: number) => Promise<boolean>;
+  createUsuario: (data: UsuarioInput) => Promise<boolean>;
+  updateUsuario: (id: number, data: UsuarioUpdateInput) => Promise<boolean>;
+  deleteUsuario: (id: number) => Promise<boolean>;
 }
 
-export const useProductStore = create<ProductStore>((set, get) => ({
-  productos: [],
+export const useUsuarioStore = create<UsuarioStore>((set, get) => ({
+  usuarios: [],
   total: 0,
   page: 1,
   pageSize: 10,
-  listFilters: { ...defaultProductoListFilters },
+  listFilters: { ...defaultUsuarioListFilters },
   loading: false,
   listLoadOk: false,
   error: null,
 
   clearError: () => set({ error: null }),
 
-  fetchProductos: async (options) => {
+  fetchUsuarios: async (options) => {
     const api = getApi();
     if (!api) {
       set({
@@ -89,7 +84,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       }
 
       set({
-        productos: result.items,
+        usuarios: result.items,
         total: result.total,
         page: effectivePage,
         pageSize,
@@ -102,27 +97,27 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     }
   },
 
-  applyListFilters: async (filters: ProductoListFilters) => {
+  applyListFilters: async (filters: UsuarioListFilters) => {
     set({ listFilters: { ...filters }, page: 1 });
-    await get().fetchProductos({ silent: true, page: 1 });
+    await get().fetchUsuarios({ silent: true, page: 1 });
   },
 
   resetListFilters: async () => {
-    set({ listFilters: { ...defaultProductoListFilters }, page: 1 });
-    await get().fetchProductos({ silent: true, page: 1 });
+    set({ listFilters: { ...defaultUsuarioListFilters }, page: 1 });
+    await get().fetchUsuarios({ silent: true, page: 1 });
   },
 
   setPage: async (page: number) => {
     const p = Math.max(1, Math.floor(page));
-    await get().fetchProductos({ page: p, silent: true });
+    await get().fetchUsuarios({ page: p, silent: true });
   },
 
   setPageSize: async (size: number) => {
     const s = Math.min(100, Math.max(1, Math.floor(size)));
-    await get().fetchProductos({ page: 1, pageSize: s, silent: true });
+    await get().fetchUsuarios({ page: 1, pageSize: s, silent: true });
   },
 
-  createProducto: async (data) => {
+  createUsuario: async (data) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -131,18 +126,18 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.create(data);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto creado');
+      await get().fetchUsuarios({ silent: true });
+      toast.success('Usuario creado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo crear el producto', { description: msg });
+      toast.error('No se pudo crear el usuario', { description: msg });
       return false;
     }
   },
 
-  updateProducto: async (id, data) => {
+  updateUsuario: async (id, data) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -151,18 +146,18 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.update(id, data);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto actualizado');
+      await get().fetchUsuarios({ silent: true });
+      toast.success('Usuario actualizado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo actualizar el producto', { description: msg });
+      toast.error('No se pudo actualizar el usuario', { description: msg });
       return false;
     }
   },
 
-  deleteProducto: async (id) => {
+  deleteUsuario: async (id) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -171,13 +166,13 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.delete(id);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto eliminado');
+      await get().fetchUsuarios({ silent: true });
+      toast.success('Usuario eliminado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo eliminar el producto', { description: msg });
+      toast.error('No se pudo eliminar el usuario', { description: msg });
       return false;
     }
   },

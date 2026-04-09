@@ -2,65 +2,59 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 
 import {
-  defaultProductoListFilters,
-  type Producto,
-  type ProductoInput,
-  type ProductoListFilters,
-  type ProductoListPagedParams,
-  type ProductoUpdateInput,
+  defaultRolListFilters,
+  type Rol,
+  type RolInput,
+  type RolListFilters,
+  type RolListPagedParams,
 } from '@/types/electron';
 
 const NO_ELECTRON_TOAST = 'Ejecuta la app con Electron (npm run dev:electron).';
 
 function getApi() {
-  if (typeof window !== 'undefined' && window.api?.producto) {
-    return window.api.producto;
+  if (typeof window !== 'undefined' && window.api?.rol) {
+    return window.api.rol;
   }
   return null;
 }
 
-function listParams(page: number, pageSize: number, filters: ProductoListFilters): ProductoListPagedParams {
-  return {
-    page,
-    pageSize,
-    ...filters,
-  };
+function listParams(page: number, pageSize: number, filters: RolListFilters): RolListPagedParams {
+  return { page, pageSize, ...filters };
 }
 
-interface ProductStore {
-  productos: Producto[];
+interface RolStore {
+  roles: Rol[];
   total: number;
   page: number;
   pageSize: number;
-  listFilters: ProductoListFilters;
+  listFilters: RolListFilters;
   loading: boolean;
-  /** true después de al menos un listado exitoso (incluye recargas silenciosas) */
   listLoadOk: boolean;
   error: string | null;
-  fetchProductos: (options?: { silent?: boolean; page?: number; pageSize?: number }) => Promise<void>;
-  applyListFilters: (filters: ProductoListFilters) => Promise<void>;
+  fetchRoles: (options?: { silent?: boolean; page?: number; pageSize?: number }) => Promise<void>;
+  applyListFilters: (filters: RolListFilters) => Promise<void>;
   resetListFilters: () => Promise<void>;
   setPage: (page: number) => Promise<void>;
   setPageSize: (pageSize: number) => Promise<void>;
   clearError: () => void;
-  createProducto: (data: ProductoInput) => Promise<boolean>;
-  updateProducto: (id: number, data: ProductoUpdateInput) => Promise<boolean>;
-  deleteProducto: (id: number) => Promise<boolean>;
+  createRol: (data: RolInput) => Promise<boolean>;
+  updateRol: (id: number, data: RolInput) => Promise<boolean>;
+  deleteRol: (id: number) => Promise<boolean>;
 }
 
-export const useProductStore = create<ProductStore>((set, get) => ({
-  productos: [],
+export const useRolStore = create<RolStore>((set, get) => ({
+  roles: [],
   total: 0,
   page: 1,
   pageSize: 10,
-  listFilters: { ...defaultProductoListFilters },
+  listFilters: { ...defaultRolListFilters },
   loading: false,
   listLoadOk: false,
   error: null,
 
   clearError: () => set({ error: null }),
 
-  fetchProductos: async (options) => {
+  fetchRoles: async (options) => {
     const api = getApi();
     if (!api) {
       set({
@@ -89,7 +83,7 @@ export const useProductStore = create<ProductStore>((set, get) => ({
       }
 
       set({
-        productos: result.items,
+        roles: result.items,
         total: result.total,
         page: effectivePage,
         pageSize,
@@ -102,27 +96,27 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     }
   },
 
-  applyListFilters: async (filters: ProductoListFilters) => {
+  applyListFilters: async (filters: RolListFilters) => {
     set({ listFilters: { ...filters }, page: 1 });
-    await get().fetchProductos({ silent: true, page: 1 });
+    await get().fetchRoles({ silent: true, page: 1 });
   },
 
   resetListFilters: async () => {
-    set({ listFilters: { ...defaultProductoListFilters }, page: 1 });
-    await get().fetchProductos({ silent: true, page: 1 });
+    set({ listFilters: { ...defaultRolListFilters }, page: 1 });
+    await get().fetchRoles({ silent: true, page: 1 });
   },
 
   setPage: async (page: number) => {
     const p = Math.max(1, Math.floor(page));
-    await get().fetchProductos({ page: p, silent: true });
+    await get().fetchRoles({ page: p, silent: true });
   },
 
   setPageSize: async (size: number) => {
     const s = Math.min(100, Math.max(1, Math.floor(size)));
-    await get().fetchProductos({ page: 1, pageSize: s, silent: true });
+    await get().fetchRoles({ page: 1, pageSize: s, silent: true });
   },
 
-  createProducto: async (data) => {
+  createRol: async (data) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -131,18 +125,18 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.create(data);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto creado');
+      await get().fetchRoles({ silent: true });
+      toast.success('Rol creado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo crear el producto', { description: msg });
+      toast.error('No se pudo crear el rol', { description: msg });
       return false;
     }
   },
 
-  updateProducto: async (id, data) => {
+  updateRol: async (id, data) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -151,18 +145,18 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.update(id, data);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto actualizado');
+      await get().fetchRoles({ silent: true });
+      toast.success('Rol actualizado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo actualizar el producto', { description: msg });
+      toast.error('No se pudo actualizar el rol', { description: msg });
       return false;
     }
   },
 
-  deleteProducto: async (id) => {
+  deleteRol: async (id) => {
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
@@ -171,13 +165,13 @@ export const useProductStore = create<ProductStore>((set, get) => ({
     set({ error: null });
     try {
       await api.delete(id);
-      await get().fetchProductos({ silent: true });
-      toast.success('Producto eliminado');
+      await get().fetchRoles({ silent: true });
+      toast.success('Rol eliminado');
       return true;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
-      toast.error('No se pudo eliminar el producto', { description: msg });
+      toast.error('No se pudo eliminar el rol', { description: msg });
       return false;
     }
   },

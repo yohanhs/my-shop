@@ -2,6 +2,8 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { initializeDatabase, disconnectPrisma } from './db/client';
 import { registerProductoIpc } from './ipc/producto.ipc';
+import { registerRolIpc } from './ipc/rol.ipc';
+import { registerUsuarioIpc } from './ipc/usuario.ipc';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -34,6 +36,8 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(async () => {
   registerProductoIpc();
+  registerRolIpc();
+  registerUsuarioIpc();
   await createWindow();
 
   app.on('activate', () => {
