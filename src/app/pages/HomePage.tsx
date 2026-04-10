@@ -13,13 +13,13 @@ const shortcuts = [
   {
     to: '/ventas',
     title: 'Ventas',
-    description: 'Tickets y historial (próximamente).',
+    description: 'Registrar ventas y consultar historial.',
     icon: ShoppingCart,
   },
   {
     to: '/gastos',
     title: 'Gastos',
-    description: 'Egresos y categorías (próximamente).',
+    description: 'Registrar y filtrar egresos por concepto y fecha.',
     icon: Wallet,
   },
   {

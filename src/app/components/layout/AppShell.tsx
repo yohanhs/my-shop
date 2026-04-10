@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Package, Settings, Shield, ShoppingCart, Users, Wallet } from 'lucide-react';
+import { LayoutDashboard, Package, Settings, Shield, ShoppingCart, Truck, Users, Wallet } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', label: 'Inicio', icon: LayoutDashboard, end: true },
   { to: '/productos', label: 'Productos', icon: Package, end: false },
+  { to: '/proveedores', label: 'Proveedores', icon: Truck, end: false },
   { to: '/usuarios', label: 'Usuarios', icon: Users, end: false },
   { to: '/roles', label: 'Roles', icon: Shield, end: false },
   { to: '/ventas', label: 'Ventas', icon: ShoppingCart, end: false },

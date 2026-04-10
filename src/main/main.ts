@@ -1,9 +1,13 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { initializeDatabase, disconnectPrisma } from './db/client';
+import { registerConfiguracionIpc } from './ipc/configuracion.ipc';
 import { registerProductoIpc } from './ipc/producto.ipc';
 import { registerRolIpc } from './ipc/rol.ipc';
+import { registerProveedorIpc } from './ipc/proveedor.ipc';
 import { registerUsuarioIpc } from './ipc/usuario.ipc';
+import { registerGastoIpc } from './ipc/gasto.ipc';
+import { registerVentaIpc } from './ipc/venta.ipc';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -36,8 +40,12 @@ async function createWindow(): Promise<void> {
 
 app.whenReady().then(async () => {
   registerProductoIpc();
+  registerProveedorIpc();
+  registerConfiguracionIpc();
   registerRolIpc();
   registerUsuarioIpc();
+  registerVentaIpc();
+  registerGastoIpc();
   await createWindow();
 
   app.on('activate', () => {
