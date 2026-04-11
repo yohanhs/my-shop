@@ -193,7 +193,7 @@ export async function loadProductosParaVenta(): Promise<Producto[]> {
   };
   try {
     const r = await api.listPaged(params);
-    return r.items.filter((p) => p.status === 'ACTIVE');
+    return r.items.filter((p) => p.status === 'ACTIVE' && p.stockActual > 0);
   } catch {
     return [];
   }

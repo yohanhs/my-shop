@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildProveedorWhere, type ProveedorListPagedOpts } from './proveedorListWhere';
 
@@ -48,6 +49,7 @@ export function registerProveedorIpc(): void {
   }
 
   ipcMain.handle('proveedor:listPaged', async (_event, opts: ProveedorListPagedOpts) => {
+    assertNotCajero();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
@@ -69,6 +71,7 @@ export function registerProveedorIpc(): void {
   });
 
   ipcMain.handle('proveedor:getById', async (_event, id: number) => {
+    assertNotCajero();
     const p = await prisma.proveedor.findUnique({ where: { id } });
     return p ? toProveedorDto(p) : null;
   });
@@ -85,6 +88,7 @@ export function registerProveedorIpc(): void {
         email?: string | null;
       },
     ) => {
+      assertNotCajero();
       const p = await prisma.proveedor.create({
         data: {
           nombre: data.nombre.trim(),
@@ -111,6 +115,7 @@ export function registerProveedorIpc(): void {
         email?: string | null;
       },
     ) => {
+      assertNotCajero();
       const payload: {
         nombre?: string;
         telefono?: string | null;
@@ -133,6 +138,7 @@ export function registerProveedorIpc(): void {
   );
 
   ipcMain.handle('proveedor:delete', async (_event, id: number) => {
+    assertNotCajero();
     const p = await prisma.proveedor.delete({ where: { id } });
     return toProveedorDto(p);
   });

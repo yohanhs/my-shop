@@ -1,5 +1,6 @@
-import type { Producto } from '@prisma/client';
+import type { Prisma, Producto } from '@prisma/client';
 import { ipcMain } from 'electron';
+import { assertAuthenticated, getAuthSession } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildVentaWhere, type VentaListPagedOpts } from './ventaListWhere';
 
@@ -95,11 +96,32 @@ function defaultTicketFolio(ventaId: number): string {
 type TxClient = any;
 
 async function resolveUsuarioId(tx: TxClient, explicit?: number): Promise<number> {
+  const session = getAuthSession();
+  if (session?.rolNombre === 'Cajero') {
+    const ex = explicit != null ? Math.floor(Number(explicit)) : null;
+    if (ex != null && ex > 0 && ex !== session.usuarioId) {
+      throw new Error('No puedes registrar ventas a nombre de otro usuario.');
+    }
+    const self = await tx.usuario.findFirst({
+      where: { id: session.usuarioId, status: 'ACTIVE' },
+    });
+    if (!self) {
+      throw new Error('Tu usuario no está activo; no se puede registrar la venta.');
+    }
+    return self.id;
+  }
+
   if (explicit != null && explicit > 0) {
     const u = await tx.usuario.findFirst({
       where: { id: Math.floor(explicit), status: 'ACTIVE' },
     });
     if (u) return u.id;
+  }
+  if (session?.usuarioId) {
+    const self = await tx.usuario.findFirst({
+      where: { id: session.usuarioId, status: 'ACTIVE' },
+    });
+    if (self) return self.id;
   }
   const first = await tx.usuario.findFirst({
     where: { status: 'ACTIVE' },
@@ -111,6 +133,29 @@ async function resolveUsuarioId(tx: TxClient, explicit?: number): Promise<number
   return first.id;
 }
 
+function mergeVentaWhereForCajero(
+  where: Prisma.VentaWhereInput,
+  rolNombre: string | undefined,
+  usuarioId: number | undefined,
+): Prisma.VentaWhereInput {
+  if (rolNombre !== 'Cajero' || usuarioId == null) return where;
+  const scope: Prisma.VentaWhereInput = { usuarioId };
+  if (!where || Object.keys(where).length === 0) return scope;
+  return { AND: [where, scope] };
+}
+
+async function assertCajeroOwnsVentaTx(tx: TxClient, ventaId: number): Promise<void> {
+  const snap = getAuthSession();
+  if (!snap || snap.rolNombre !== 'Cajero') return;
+  const v = await tx.venta.findUnique({
+    where: { id: ventaId },
+    select: { usuarioId: true },
+  });
+  if (!v || v.usuarioId == null || v.usuarioId !== snap.usuarioId) {
+    throw new Error('No autorizado.');
+  }
+}
+
 export function registerVentaIpc(): void {
   const prisma = getPrismaClient();
 
@@ -119,11 +164,13 @@ export function registerVentaIpc(): void {
   }
 
   ipcMain.handle('venta:listPaged', async (_event, opts: VentaListPagedOpts) => {
+    assertAuthenticated();
+    const snap = getAuthSession();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
     const skip = (page - 1) * pageSize;
-    const where = buildVentaWhere(opts);
+    const where = mergeVentaWhereForCajero(buildVentaWhere(opts), snap?.rolNombre, snap?.usuarioId);
 
     const [rows, total] = await Promise.all([
       prisma.venta.findMany({
@@ -153,6 +200,8 @@ export function registerVentaIpc(): void {
   });
 
   ipcMain.handle('venta:getById', async (_event, id: number) => {
+    assertAuthenticated();
+    const snap = getAuthSession();
     const v = await prisma.venta.findUnique({
       where: { id },
       include: {
@@ -165,6 +214,12 @@ export function registerVentaIpc(): void {
       },
     });
     if (!v) return null;
+    if (
+      snap?.rolNombre === 'Cajero' &&
+      (v.usuarioId == null || v.usuarioId !== snap.usuarioId)
+    ) {
+      return null;
+    }
 
     return {
       id: v.id,
@@ -198,6 +253,7 @@ export function registerVentaIpc(): void {
         usuarioId?: number;
       },
     ) => {
+      assertAuthenticated();
       const metodoPago = typeof payload.metodoPago === 'string' ? payload.metodoPago.trim().toUpperCase() : '';
       if (!METODOS.has(metodoPago)) {
         throw new Error('Método de pago inválido.');
@@ -205,7 +261,7 @@ export function registerVentaIpc(): void {
 
       const merged = mergeLineas(payload.lineas ?? []);
       if (merged.length === 0) {
-        throw new Error('Agrega al menos una línea con producto y cantidad.');
+        throw new Error('Agrega al menos un producto con cantidad.');
       }
 
       const folioRaw =
@@ -246,6 +302,7 @@ export function registerVentaIpc(): void {
             metodoPago,
             estado: 'ACTIVA',
             ticketFolio,
+            usuarioId,
             detalles: {
               create: merged.map((l) => {
                 const p = productos.find((x) => x.id === l.productoId)!;
@@ -319,6 +376,7 @@ export function registerVentaIpc(): void {
         usuarioId?: number;
       },
     ) => {
+      assertAuthenticated();
       const ventaId = Math.floor(Number(ventaIdParam));
       if (!Number.isFinite(ventaId) || ventaId < 1) {
         throw new Error('Venta inválida.');
@@ -329,7 +387,7 @@ export function registerVentaIpc(): void {
 
       const merged = mergeLineas(payload.lineas ?? []);
       if (merged.length === 0) {
-        throw new Error('Agrega al menos una línea con producto y cantidad.');
+        throw new Error('Agrega al menos un producto con cantidad.');
       }
 
       const updated = await prisma.$transaction(async (tx: TxClient) => {
@@ -343,6 +401,8 @@ export function registerVentaIpc(): void {
         if (v.estado !== 'ACTIVA') {
           throw new Error('Solo se pueden editar ventas activas.');
         }
+
+        await assertCajeroOwnsVentaTx(tx, ventaId);
 
         const usuarioId = await resolveUsuarioId(tx, payload.usuarioId);
 
@@ -447,6 +507,7 @@ export function registerVentaIpc(): void {
   );
 
   ipcMain.handle('venta:anular', async (_event, id: number, usuarioIdOpt?: number) => {
+    assertAuthenticated();
     await prisma.$transaction(async (tx: TxClient) => {
       const v = await tx.venta.findUnique({
         where: { id },
@@ -458,6 +519,8 @@ export function registerVentaIpc(): void {
       if (v.estado !== 'ACTIVA') {
         throw new Error('La venta ya está anulada.');
       }
+
+      await assertCajeroOwnsVentaTx(tx, id);
 
       const usuarioId = await resolveUsuarioId(tx, usuarioIdOpt);
 

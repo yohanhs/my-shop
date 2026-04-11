@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { openVentaTicketPrintWindow } from '@/lib/ventaTicketPrint';
 import { cn } from '@/lib/utils';
 import type { VentaListItem } from '@/types/electron';
 
@@ -69,7 +70,7 @@ export function VentasTable({ ventas, totalCount, footer, className }: VentasTab
                 <TableHead>Fecha</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Pago</TableHead>
-                <TableHead>Líneas</TableHead>
+                <TableHead>Productos</TableHead>
                 <TableHead>Folio</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -91,16 +92,28 @@ export function VentasTable({ ventas, totalCount, footer, className }: VentasTab
                     <EstadoVentaBadge estado={v.estado} />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                      aria-label={`Ver venta ${v.id}`}
-                      onClick={() => navigate(`/ventas/${v.id}`)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Imprimir ticket venta ${v.id}`}
+                        onClick={() => openVentaTicketPrintWindow(v.id)}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label={`Ver venta ${v.id}`}
+                        onClick={() => navigate(`/ventas/${v.id}`)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -7,22 +7,44 @@ import { registerRolIpc } from './ipc/rol.ipc';
 import { registerProveedorIpc } from './ipc/proveedor.ipc';
 import { registerUsuarioIpc } from './ipc/usuario.ipc';
 import { registerGastoIpc } from './ipc/gasto.ipc';
+import { registerFileIpc } from './ipc/file.ipc';
+import { registerStatsIpc } from './ipc/stats.ipc';
 import { registerVentaIpc } from './ipc/venta.ipc';
+import { registerAuthIpc, seedDefaultAuth } from './ipc/auth.ipc';
+import { getPrismaClient } from './db/client';
 
 let mainWindow: BrowserWindow | null = null;
 
+function preloadScriptPath(): string {
+  return path.join(__dirname, '../preload/index.js');
+}
+
 async function createWindow(): Promise<void> {
   await initializeDatabase();
+  await seedDefaultAuth(getPrismaClient());
+
+  const webPreferences = {
+    preload: preloadScriptPath(),
+    contextIsolation: true,
+    nodeIntegration: false,
+  } as const;
 
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: { ...webPreferences },
   });
+
+  /** `window.open()` no hereda preload; sin esto `window.api` queda undefined en tickets / popups. */
+  mainWindow.webContents.setWindowOpenHandler(() => ({
+    action: 'allow',
+    overrideBrowserWindowOptions: {
+      width: 440,
+      height: 820,
+      autoHideMenuBar: true,
+      webPreferences: { ...webPreferences },
+    },
+  }));
 
   // En desarrollo carga el servidor de Vite, en producción el build
   const isDev = !app.isPackaged;
@@ -39,6 +61,8 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  registerAuthIpc();
+  registerFileIpc();
   registerProductoIpc();
   registerProveedorIpc();
   registerConfiguracionIpc();
@@ -46,6 +70,7 @@ app.whenReady().then(async () => {
   registerUsuarioIpc();
   registerVentaIpc();
   registerGastoIpc();
+  registerStatsIpc();
   await createWindow();
 
   app.on('activate', () => {

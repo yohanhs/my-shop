@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { format, parseISO } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -24,6 +25,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { DatePickerField } from '@/components/ui/date-picker-field';
+import { ImageDropField } from '@/components/ui/image-drop-field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -42,6 +45,15 @@ import type { Producto, ProductoInput, ProductoUpdateInput } from '@/types/elect
 import { useProductStore } from '../store/useProductStore';
 
 type FormMode = 'create' | 'edit';
+
+function productoFechaCadToForm(iso: string | null | undefined): string {
+  if (!iso) return '';
+  try {
+    return format(parseISO(iso), 'yyyy-MM-dd');
+  } catch {
+    return '';
+  }
+}
 
 interface ProductoFormModalProps {
   open: boolean;
@@ -82,6 +94,7 @@ function ProductoFormModal({
         stockActual: product.stockActual,
         stockMinimo: product.stockMinimo,
         imagenPath: product.imagenPath ?? '',
+        fechaCaducidad: productoFechaCadToForm(product.fechaCaducidad),
         status: product.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
       });
     } else {
@@ -94,6 +107,7 @@ function ProductoFormModal({
     setSubmitting(true);
     try {
       const imagenPath = values.imagenPath.trim() || undefined;
+      const fechaCaducidad = values.fechaCaducidad.trim() || null;
       const descripcionNorm = values.descripcion.trim();
       const descripcionDb = descripcionNorm.length > 0 ? descripcionNorm : null;
       let ok = false;
@@ -107,6 +121,7 @@ function ProductoFormModal({
           stockActual: values.stockActual,
           stockMinimo: values.stockMinimo,
           imagenPath,
+          fechaCaducidad,
         });
       } else if (product) {
         ok = await onSubmitUpdate(product.id, {
@@ -118,6 +133,7 @@ function ProductoFormModal({
           stockActual: values.stockActual,
           stockMinimo: values.stockMinimo,
           imagenPath,
+          fechaCaducidad,
           status: values.status,
         });
       }
@@ -323,9 +339,33 @@ function ProductoFormModal({
               name="imagenPath"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Ruta imagen (opcional)</FormLabel>
+                  <FormLabel>Imagen del producto (opcional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="/ruta/archivo.jpg" disabled={submitting} {...field} />
+                    <ImageDropField
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      disabled={submitting}
+                      browseLabel="Elegir imagen…"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="fechaCaducidad"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Caducidad (opcional)</FormLabel>
+                  <FormControl>
+                    <DatePickerField
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      disabled={submitting}
+                      placeholder="Sin fecha de caducidad"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

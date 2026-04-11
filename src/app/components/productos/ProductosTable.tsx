@@ -25,7 +25,15 @@ function formatFecha(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return new Intl.DateTimeFormat('es-MX', {
     dateStyle: 'short',
-    timeStyle: 'short',
+  }).format(d);
+}
+
+function formatFechaCaducidad(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'short',
   }).format(d);
 }
 
@@ -68,12 +76,11 @@ export function ProductosTable({
             <TableRow>
               <TableHead>SKU</TableHead>
               <TableHead>Nombre</TableHead>
-              <TableHead className="max-w-[200px]">Descripción</TableHead>
               <TableHead>Precio venta</TableHead>
               <TableHead>Stock</TableHead>
+              <TableHead className="whitespace-nowrap">Caducidad</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="whitespace-nowrap">Creado</TableHead>
-              <TableHead className="whitespace-nowrap">Actualizado</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
@@ -82,15 +89,6 @@ export function ProductosTable({
               <TableRow key={p.id}>
                 <TableCell className="font-mono text-muted-foreground">{p.sku}</TableCell>
                 <TableCell className="font-medium">{p.nombre}</TableCell>
-                <TableCell className="max-w-[200px] text-muted-foreground">
-                  {p.descripcion ? (
-                    <span className="line-clamp-2 text-sm" title={p.descripcion}>
-                      {p.descripcion}
-                    </span>
-                  ) : (
-                    <span className="text-sm">—</span>
-                  )}
-                </TableCell>
                 <TableCell>${p.precioVenta.toFixed(2)}</TableCell>
                 <TableCell>
                   <span
@@ -101,14 +99,14 @@ export function ProductosTable({
                     {p.stockActual}
                   </span>
                 </TableCell>
+                <TableCell className="whitespace-nowrap text-sm">
+                  {formatFechaCaducidad(p.fechaCaducidad)}
+                </TableCell>
                 <TableCell>
                   <ProductoEstadoBadge status={p.status} />
                 </TableCell>
                 <TableCell className="whitespace-nowrap text-sm text-muted-foreground" title={p.createdAt}>
                   {formatFecha(p.createdAt)}
-                </TableCell>
-                <TableCell className="whitespace-nowrap text-sm text-muted-foreground" title={p.updatedAt}>
-                  {formatFecha(p.updatedAt)}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">

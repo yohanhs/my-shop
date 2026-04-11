@@ -12,7 +12,7 @@ datasource db {
 
 model Rol {
   id      Int       @id @default(autoincrement())
-  nombre  String    @unique // Admin, Vendedor, Inventarista
+  nombre  String    @unique // SuperAdmin, Cajero (fijos por la app)
   usuarios Usuario[]
 }
 
@@ -28,6 +28,7 @@ model Usuario {
 
   rol               Rol                @relation(fields: [rolId], references: [id])
   movimientosStock  MovimientoStock[]
+  ventas            Venta[]
 
   @@map("usuarios")
 }
@@ -41,10 +42,11 @@ model Producto {
   precioVenta   Float             @map("precio_venta")
   stockActual   Int               @default(0) @map("stock_actual")
   stockMinimo   Int               @default(0) @map("stock_minimo")
-  imagenPath    String?           @map("imagen_path")
-  status        String            @default("ACTIVE") // ACTIVE | INACTIVE
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  imagenPath      String?   @map("imagen_path")
+  fechaCaducidad  DateTime? @map("fecha_caducidad")
+  status          String    @default("ACTIVE") // ACTIVE | INACTIVE
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   ventaDetalles     VentaDetalle[]
   movimientosStock  MovimientoStock[]
@@ -59,9 +61,12 @@ model Venta {
   metodoPago  String         @map("metodo_pago") // EFECTIVO | TARJETA | TRANSFERENCIA
   estado      String         @default("ACTIVA") // ACTIVA | ANULADA
   ticketFolio String?        @map("ticket_folio")
+  /** Cajero que registró la venta; null en ventas antiguas. */
+  usuarioId   Int?           @map("usuario_id")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
+  usuario  Usuario?       @relation(fields: [usuarioId], references: [id])
   detalles VentaDetalle[]
 
   @@map("ventas")
@@ -111,11 +116,13 @@ model MovimientoStock {
 }
 
 model Configuracion {
-  id                 Int     @id @default(autoincrement())
-  nombreTienda       String  @map("nombre_tienda")
-  moneda             String  @default("MXN")
-  impuestoPorcentaje Float   @default(16) @map("impuesto_porcentaje")
-  logoPath           String? @map("logo_path")
+  id                  Int     @id @default(autoincrement())
+  nombreTienda        String  @map("nombre_tienda")
+  moneda              String  @default("MXN")
+  impuestoPorcentaje  Float   @default(16) @map("impuesto_porcentaje")
+  logoPath            String? @map("logo_path")
+  /** Carpeta donde se copian imágenes importadas (productos, logo). Vacío = carpeta interna de la app. */
+  imagenesDirDefault  String? @map("imagenes_dir_default")
 
   @@map("configuracion")
 }

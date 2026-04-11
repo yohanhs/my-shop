@@ -8,6 +8,8 @@ export interface Producto {
   stockActual: number;
   stockMinimo: number;
   imagenPath: string | null;
+  /** ISO o null si no aplica. */
+  fechaCaducidad: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -22,6 +24,8 @@ export interface ProductoInput {
   stockActual?: number;
   stockMinimo?: number;
   imagenPath?: string;
+  /** `YYYY-MM-DD` o vacío/null = sin caducidad. */
+  fechaCaducidad?: string | null;
 }
 
 export interface ProductoUpdateInput {
@@ -33,6 +37,7 @@ export interface ProductoUpdateInput {
   stockActual?: number;
   stockMinimo?: number;
   imagenPath?: string;
+  fechaCaducidad?: string | null;
   status?: string;
 }
 
@@ -159,6 +164,8 @@ export interface Configuracion {
   moneda: string;
   impuestoPorcentaje: number;
   logoPath: string | null;
+  /** Carpeta donde se copian imágenes importadas; null = carpeta interna de la app. */
+  imagenesDirDefault: string | null;
 }
 
 export interface ConfiguracionUpdateInput {
@@ -166,11 +173,19 @@ export interface ConfiguracionUpdateInput {
   moneda?: string;
   impuestoPorcentaje?: number;
   logoPath?: string | null;
+  imagenesDirDefault?: string | null;
 }
 
 export interface ConfiguracionApi {
   get: () => Promise<Configuracion>;
   update: (id: number, data: ConfiguracionUpdateInput) => Promise<Configuracion>;
+}
+
+/** Importación de imágenes al disco (proceso principal). */
+export interface FileApi {
+  importImage: (sourcePath: string) => Promise<{ path: string }>;
+  pickImageFile: () => Promise<string | null>;
+  pickImagesDirectory: () => Promise<string | null>;
 }
 
 // ─── Venta ───────────────────────────────────────────────────────────────
@@ -438,12 +453,96 @@ export interface UsuarioApi {
   delete: (id: number) => Promise<void>;
 }
 
+// ─── Estadísticas (inicio / KPI) ─────────────────────────────────────────
+
+export interface HomeDashboardMom {
+  actual: number;
+  anterior: number;
+  momPct: number | null;
+}
+
+export interface HomeDashboardSeriesPoint {
+  monthKey: string;
+  mesCorto: string;
+  ingresos: number;
+  gastos: number;
+}
+
+export interface HomeDashboardMetodoPago {
+  metodoPago: string;
+  total: number;
+}
+
+export interface HomeDashboardProductRank {
+  productoId: number;
+  nombre: string;
+  sku: string;
+  cantidad: number;
+}
+
+export interface ProductoCaducidadProxima {
+  productoId: number;
+  nombre: string;
+  sku: string;
+  stockActual: number;
+  fechaCaducidad: string; // ISO format
+}
+
+/** Rango inclusive (AAAA-MM-DD, día local) para KPIs del inicio. */
+export interface HomeDashboardRangeInput {
+  desde: string;
+  hasta: string;
+}
+
+export interface HomeDashboardStats {
+  moneda: string;
+  /** Etiqueta del periodo seleccionado (p. ej. rango de fechas). */
+  mesActualLabel: string;
+  /** Etiqueta del periodo de comparación (misma duración en días, inmediatamente anterior). */
+  mesAnteriorLabel: string;
+  ingresos: HomeDashboardMom;
+  gastos: HomeDashboardMom;
+  ventasCount: { actual: number; anterior: number };
+  ticketPromedio: HomeDashboardMom;
+  balanceActual: number;
+  series6m: HomeDashboardSeriesPoint[];
+  metodoPagoMes: HomeDashboardMetodoPago[];
+  /** Top unidades vendidas en el periodo (ventas activas). */
+  productosMasVendidos: HomeDashboardProductRank[];
+  /** Menor rotación entre productos con ventas en el periodo. */
+  productosMenosVendidos: HomeDashboardProductRank[];
+  /** 10 productos con stock y fecha de caducidad más cercana (vivos, con stock > 0). */
+  productosProximosCaducar: ProductoCaducidadProxima[];
+}
+
+export interface StatsApi {
+  getHomeDashboard: (range?: HomeDashboardRangeInput | null) => Promise<HomeDashboardStats>;
+}
+
+/** Usuario autenticado (sesión en el proceso principal). */
+export interface AuthUser {
+  usuarioId: number;
+  username: string;
+  nombre: string;
+  rolNombre: string;
+}
+
+export interface AuthApi {
+  ensureAdmin: () => Promise<boolean>;
+  login: (username: string, password: string) => Promise<AuthUser>;
+  getCurrentUser: () => Promise<AuthUser | null>;
+  logout: () => Promise<boolean>;
+}
+
 export interface ElectronApi {
+  auth: AuthApi;
   producto: ProductoApi;
   proveedor: ProveedorApi;
   configuracion: ConfiguracionApi;
+  file: FileApi;
   venta: VentaApi;
   gasto: GastoApi;
+  stats: StatsApi;
   rol: RolApi;
   usuario: UsuarioApi;
 }

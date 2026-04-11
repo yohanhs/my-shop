@@ -72,3 +72,32 @@ export const usuarioEditFormDefaultValues: UsuarioEditFormValues = {
   rolId: 0,
   status: 'ACTIVE',
 };
+
+/** Edición de perfil propio: sin rol ni estado (solo nombre, usuario y contraseña opcional). */
+export const usuarioPerfilFormSchema = yup.object({
+  nombre: yup.string().trim().required('El nombre es obligatorio.').max(120, 'Máximo 120 caracteres.'),
+  username: yup
+    .string()
+    .trim()
+    .required('El usuario es obligatorio.')
+    .min(3, 'Mínimo 3 caracteres.')
+    .max(64, 'Máximo 64 caracteres.')
+    .matches(/^[a-zA-Z0-9._-]+$/, 'Solo letras, números, punto, guion y guion bajo.'),
+  password: yup
+    .string()
+    .max(128, 'Máximo 128 caracteres.')
+    .default('')
+    .test(
+      'password-length-if-set',
+      'Mínimo 6 caracteres si cambias la contraseña.',
+      (v) => v === '' || (typeof v === 'string' && v.length >= 6),
+    ),
+});
+
+export type UsuarioPerfilFormValues = yup.InferType<typeof usuarioPerfilFormSchema>;
+
+export const usuarioPerfilFormDefaultValues: UsuarioPerfilFormValues = {
+  nombre: '',
+  username: '',
+  password: '',
+};

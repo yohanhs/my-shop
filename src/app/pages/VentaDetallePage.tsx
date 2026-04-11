@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Ban, Pencil } from 'lucide-react';
+import { ArrowLeft, Ban, Pencil, Printer } from 'lucide-react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VentaEditorDialog } from '@/components/ventas/VentaEditorDialog';
 import type { VentaConDetalles } from '@/types/electron';
+import { openVentaTicketPrintWindow } from '@/lib/ventaTicketPrint';
 import { useVentaStore } from '@/store/useVentaStore';
 
 function formatFecha(iso: string): string {
@@ -155,24 +156,35 @@ export function VentaDetallePage() {
             Ventas
           </Link>
         </Button>
-        {v.estado === 'ACTIVA' ? (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" className="gap-2" onClick={() => setEditOpen(true)}>
-              <Pencil className="h-4 w-4" />
-              Editar venta
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              className="gap-2"
-              disabled={anulando}
-              onClick={() => void handleAnular()}
-            >
-              <Ban className="h-4 w-4" />
-              {anulando ? 'Anulando…' : 'Anular venta'}
-            </Button>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="gap-2"
+            onClick={() => openVentaTicketPrintWindow(v.id)}
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir ticket
+          </Button>
+          {v.estado === 'ACTIVA' ? (
+            <>
+              <Button type="button" variant="outline" className="gap-2" onClick={() => setEditOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                Editar venta
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="gap-2"
+                disabled={anulando}
+                onClick={() => void handleAnular()}
+              >
+                <Ban className="h-4 w-4" />
+                {anulando ? 'Anulando…' : 'Anular venta'}
+              </Button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div>
@@ -214,7 +226,7 @@ export function VentaDetallePage() {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Líneas</CardTitle>
+          <CardTitle className="text-base">Productos</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:px-6 sm:pb-6">
           <Table>

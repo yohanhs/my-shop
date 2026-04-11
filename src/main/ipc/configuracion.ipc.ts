@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { assertAuthenticated, assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 
 const CHANNELS = ['configuracion:get', 'configuracion:update'] as const;
@@ -9,6 +10,7 @@ function toDto(row: {
   moneda: string;
   impuestoPorcentaje: number;
   logoPath: string | null;
+  imagenesDirDefault: string | null;
 }) {
   return {
     id: row.id,
@@ -16,6 +18,7 @@ function toDto(row: {
     moneda: row.moneda,
     impuestoPorcentaje: row.impuestoPorcentaje,
     logoPath: row.logoPath,
+    imagenesDirDefault: row.imagenesDirDefault,
   };
 }
 
@@ -27,6 +30,10 @@ function normLogo(v: unknown): string | null | undefined {
   return t.length === 0 ? null : t;
 }
 
+function normImagenesDir(v: unknown): string | null | undefined {
+  return normLogo(v);
+}
+
 export function registerConfiguracionIpc(): void {
   const prisma = getPrismaClient();
 
@@ -35,6 +42,7 @@ export function registerConfiguracionIpc(): void {
   }
 
   ipcMain.handle('configuracion:get', async () => {
+    assertAuthenticated();
     let row = await prisma.configuracion.findFirst({ orderBy: { id: 'asc' } });
     if (!row) {
       row = await prisma.configuracion.create({
@@ -58,13 +66,16 @@ export function registerConfiguracionIpc(): void {
         moneda?: string;
         impuestoPorcentaje?: number;
         logoPath?: string | null;
+        imagenesDirDefault?: string | null;
       },
     ) => {
+      assertNotCajero();
       const payload: {
         nombreTienda?: string;
         moneda?: string;
         impuestoPorcentaje?: number;
         logoPath?: string | null;
+        imagenesDirDefault?: string | null;
       } = {};
       if (data.nombreTienda !== undefined) payload.nombreTienda = data.nombreTienda.trim();
       if (data.moneda !== undefined) payload.moneda = data.moneda.trim().toUpperCase();
@@ -73,6 +84,9 @@ export function registerConfiguracionIpc(): void {
       }
       if (data.logoPath !== undefined) {
         payload.logoPath = normLogo(data.logoPath) ?? null;
+      }
+      if (data.imagenesDirDefault !== undefined) {
+        payload.imagenesDirDefault = normImagenesDir(data.imagenesDirDefault) ?? null;
       }
 
       const row = await prisma.configuracion.update({

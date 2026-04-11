@@ -106,6 +106,17 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
 
   const onSubmit = async (values: VentaFormValues) => {
     setServerError(null);
+    for (let i = 0; i < values.lineas.length; i += 1) {
+      const l = values.lineas[i];
+      const p = byId.get(l.productoId);
+      if (p && l.cantidad > p.stockActual) {
+        form.setError(`lineas.${i}.cantidad`, {
+          type: 'manual',
+          message: `Máximo ${p.stockActual} unidades (stock del producto).`,
+        });
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const payload = ventaFormToCreate(values);
@@ -156,8 +167,8 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
           <DialogTitle>{isEdit ? `Editar venta #${venta!.id}` : 'Nueva venta'}</DialogTitle>
           <DialogDescription>
             {isEdit
-              ? 'Se revierte el stock de la venta anterior y se aplican las nuevas líneas con el precio de venta actual del catálogo.'
-              : 'Agrega líneas de producto. El precio aplicado es el precio de venta actual y el stock se descuenta al guardar.'}
+              ? 'Se revierte el stock de la venta anterior y se aplican los productos con el precio de venta actual del catálogo.'
+              : 'Agrega productos a la venta. El precio aplicado es el precio de venta actual y el stock se descuenta al guardar.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -241,7 +252,7 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
 
             <div className="space-y-2">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <Label>Líneas</Label>
+                <Label>Productos</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -251,13 +262,13 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
                   onClick={() => append({ productoId: 0, cantidad: 1 })}
                 >
                   <Plus className="h-4 w-4" />
-                  Añadir línea
+                  Añadir producto
                 </Button>
               </div>
 
               <div className="space-y-3 rounded-md border p-3">
                 {fields.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No hay líneas. Pulsa «Añadir línea».</p>
+                  <p className="text-sm text-muted-foreground">No hay productos. Pulsa «Añadir producto».</p>
                 ) : (
                   fields.map((fieldRow, index) => (
                     <div
@@ -275,7 +286,19 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
                                 ref={field.ref}
                                 name={field.name}
                                 value={field.value ?? 0}
-                                onChange={field.onChange}
+                                onChange={(productoId) => {
+                                  field.onChange(productoId);
+                                  const p = byId.get(productoId);
+                                  if (!p || p.stockActual < 1) return;
+                                  const maxStock = p.stockActual;
+                                  const qty = form.getValues(`lineas.${index}.cantidad`);
+                                  if (Number.isFinite(qty) && qty > maxStock) {
+                                    form.setValue(`lineas.${index}.cantidad`, maxStock, {
+                                      shouldDirty: true,
+                                      shouldValidate: true,
+                                    });
+                                  }
+                                }}
                                 onBlur={field.onBlur}
                                 disabled={submitting || productos.length === 0}
                                 productos={productos}
@@ -291,28 +314,60 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
                       <FormField
                         control={form.control}
                         name={`lineas.${index}.cantidad`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={index > 0 ? 'sr-only' : undefined}>Cantidad</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                step={1}
-                                disabled={submitting}
-                                value={Number.isFinite(field.value) ? field.value : ''}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  field.onChange(raw === '' ? Number.NaN : Number.parseInt(raw, 10));
-                                }}
-                                onBlur={field.onBlur}
-                                name={field.name}
-                                ref={field.ref}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                        render={({ field }) => {
+                          const pid = lineasW?.[index]?.productoId ?? 0;
+                          const prod = pid > 0 ? byId.get(pid) : undefined;
+                          const maxStock =
+                            prod !== undefined && prod.stockActual >= 1 ? prod.stockActual : undefined;
+                          const sinStock = prod !== undefined && prod.stockActual < 1;
+
+                          return (
+                            <FormItem>
+                              <FormLabel className={index > 0 ? 'sr-only' : undefined}>Cantidad</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={maxStock}
+                                  step={1}
+                                  disabled={submitting || !prod || sinStock}
+                                  value={Number.isFinite(field.value) ? field.value : ''}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    let n = raw === '' ? Number.NaN : Number.parseInt(raw, 10);
+                                    if (Number.isFinite(n) && maxStock !== undefined && n > maxStock) {
+                                      n = maxStock;
+                                    }
+                                    field.onChange(n);
+                                  }}
+                                  onBlur={() => {
+                                    const n = form.getValues(`lineas.${index}.cantidad`);
+                                    if (
+                                      Number.isFinite(n) &&
+                                      maxStock !== undefined &&
+                                      n > maxStock
+                                    ) {
+                                      form.setValue(`lineas.${index}.cantidad`, maxStock, {
+                                        shouldValidate: true,
+                                      });
+                                    }
+                                    field.onBlur();
+                                  }}
+                                  name={field.name}
+                                  ref={field.ref}
+                                />
+                              </FormControl>
+                              {sinStock ? (
+                                <p className="text-[11px] text-muted-foreground">
+                                  Sin stock. Cambia de producto o quita la línea.
+                                </p>
+                              ) : prod && maxStock !== undefined ? (
+                                <p className="text-[11px] text-muted-foreground">Máx. {maxStock} (stock)</p>
+                              ) : null}
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
                       />
                       <div className="flex items-end justify-end">
                         <Button
@@ -321,7 +376,7 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
                           size="icon"
                           className="text-destructive hover:text-destructive"
                           disabled={submitting || fields.length <= 1}
-                          aria-label="Quitar línea"
+                          aria-label="Quitar producto"
                           onClick={() => remove(index)}
                         >
                           <Trash2 className="h-4 w-4" />

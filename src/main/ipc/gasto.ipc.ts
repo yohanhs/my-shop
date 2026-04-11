@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildGastoWhere, type GastoListPagedOpts } from './gastoListWhere';
 
@@ -64,6 +65,7 @@ export function registerGastoIpc(): void {
   }
 
   ipcMain.handle('gasto:listPaged', async (_event, opts: GastoListPagedOpts) => {
+    assertNotCajero();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
@@ -85,6 +87,7 @@ export function registerGastoIpc(): void {
   });
 
   ipcMain.handle('gasto:getById', async (_event, id: number) => {
+    assertNotCajero();
     const g = await prisma.gasto.findUnique({ where: { id } });
     return g ? toGastoDto(g) : null;
   });
@@ -100,6 +103,7 @@ export function registerGastoIpc(): void {
         categoria: string;
       },
     ) => {
+      assertNotCajero();
       const concepto = typeof data.concepto === 'string' ? data.concepto.trim() : '';
       if (concepto.length === 0) {
         throw new Error('El concepto es obligatorio.');
@@ -135,6 +139,7 @@ export function registerGastoIpc(): void {
         categoria?: string;
       },
     ) => {
+      assertNotCajero();
       const payload: {
         concepto?: string;
         monto?: number;
@@ -168,6 +173,7 @@ export function registerGastoIpc(): void {
   );
 
   ipcMain.handle('gasto:delete', async (_event, id: number) => {
+    assertNotCajero();
     const g = await prisma.gasto.delete({ where: { id } });
     return toGastoDto(g);
   });

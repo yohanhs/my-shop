@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import { assertAuthenticated, assertSuperAdmin } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildRolWhere, type RolListPagedOpts } from './rolListWhere';
 
@@ -11,6 +12,9 @@ const ROL_CHANNELS = [
   'rol:delete',
 ] as const;
 
+const ROLES_FIJOS_MSG =
+  'Los roles del sistema son fijos (SuperAdmin, Cajero). No se pueden crear ni editar desde la aplicación.';
+
 export function registerRolIpc(): void {
   const prisma = getPrismaClient();
 
@@ -19,6 +23,7 @@ export function registerRolIpc(): void {
   }
 
   ipcMain.handle('rol:listPaged', async (_event, opts: RolListPagedOpts) => {
+    assertSuperAdmin();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
@@ -39,33 +44,29 @@ export function registerRolIpc(): void {
   });
 
   ipcMain.handle('rol:listAll', async () => {
-    return prisma.rol.findMany({ orderBy: { nombre: 'asc' } });
+    assertSuperAdmin();
+    const allowed = new Set(['SuperAdmin', 'Cajero']);
+    const rows = await prisma.rol.findMany({ orderBy: { nombre: 'asc' } });
+    return rows.filter((r) => allowed.has(r.nombre));
   });
 
   ipcMain.handle('rol:getById', async (_event, id: number) => {
+    assertSuperAdmin();
     return prisma.rol.findUnique({ where: { id } });
   });
 
-  ipcMain.handle('rol:create', async (_event, data: { nombre: string }) => {
-    return prisma.rol.create({
-      data: { nombre: data.nombre.trim() },
-    });
+  ipcMain.handle('rol:create', async () => {
+    assertAuthenticated();
+    throw new Error(ROLES_FIJOS_MSG);
   });
 
-  ipcMain.handle('rol:update', async (_event, id: number, data: { nombre: string }) => {
-    return prisma.rol.update({
-      where: { id },
-      data: { nombre: data.nombre.trim() },
-    });
+  ipcMain.handle('rol:update', async () => {
+    assertAuthenticated();
+    throw new Error(ROLES_FIJOS_MSG);
   });
 
-  ipcMain.handle('rol:delete', async (_event, id: number) => {
-    const count = await prisma.usuario.count({ where: { rolId: id } });
-    if (count > 0) {
-      throw new Error(
-        `No se puede eliminar el rol: hay ${count} usuario(s) asignado(s). Reasígnalos antes.`,
-      );
-    }
-    return prisma.rol.delete({ where: { id } });
+  ipcMain.handle('rol:delete', async () => {
+    assertAuthenticated();
+    throw new Error(ROLES_FIJOS_MSG);
   });
 }

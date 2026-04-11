@@ -9,6 +9,7 @@ export interface ProductoInput {
   stockActual?: number;
   stockMinimo?: number;
   imagenPath?: string;
+  fechaCaducidad?: string | null;
 }
 
 export interface ProductoUpdateInput {
@@ -20,6 +21,7 @@ export interface ProductoUpdateInput {
   stockActual?: number;
   stockMinimo?: number;
   imagenPath?: string;
+  fechaCaducidad?: string | null;
   status?: string;
 }
 
@@ -64,6 +66,7 @@ export interface ConfiguracionUpdateInput {
   moneda?: string;
   impuestoPorcentaje?: number;
   logoPath?: string | null;
+  imagenesDirDefault?: string | null;
 }
 
 export interface VentaLineaInput {
@@ -131,6 +134,12 @@ const configuracionApi = {
     ipcRenderer.invoke('configuracion:update', id, data),
 };
 
+const fileApi = {
+  importImage: (sourcePath: string) => ipcRenderer.invoke('file:importImage', sourcePath),
+  pickImageFile: () => ipcRenderer.invoke('file:pickImageFile'),
+  pickImagesDirectory: () => ipcRenderer.invoke('file:pickImagesDirectory'),
+};
+
 const ventaApi = {
   listPaged: (params: Record<string, unknown>) => ipcRenderer.invoke('venta:listPaged', params),
   getById: (id: number) => ipcRenderer.invoke('venta:getById', id),
@@ -147,12 +156,27 @@ const gastoApi = {
   delete: (id: number) => ipcRenderer.invoke('gasto:delete', id),
 };
 
+const statsApi = {
+  getHomeDashboard: (range?: { desde: string; hasta: string } | null) =>
+    ipcRenderer.invoke('stats:getHomeDashboard', range ?? undefined),
+};
+
+const authApi = {
+  ensureAdmin: () => ipcRenderer.invoke('auth:ensureAdmin'),
+  login: (username: string, password: string) => ipcRenderer.invoke('auth:login', username, password),
+  getCurrentUser: () => ipcRenderer.invoke('auth:getCurrentUser'),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+};
+
 contextBridge.exposeInMainWorld('api', {
+  auth: authApi,
   producto: productoApi,
   proveedor: proveedorApi,
   configuracion: configuracionApi,
+  file: fileApi,
   venta: ventaApi,
   gasto: gastoApi,
+  stats: statsApi,
   rol: rolApi,
   usuario: usuarioApi,
 });

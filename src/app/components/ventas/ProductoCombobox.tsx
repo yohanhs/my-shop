@@ -53,6 +53,12 @@ export const ProductoCombobox = forwardRef<HTMLButtonElement, ProductoComboboxPr
     const selected = value > 0 ? productos.find((p) => p.id === value) : undefined;
     const fallbackLabel = value > 0 && !selected ? `Producto #${value} (revisa catálogo)` : '';
 
+    /** Solo con stock; se mantiene el elegido aunque quede en 0 (p. ej. al editar una venta). */
+    const listable = useMemo(
+      () => productos.filter((p) => p.stockActual > 0 || p.id === value),
+      [productos, value],
+    );
+
     const byId = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
     const commandFilter = useMemo(() => {
@@ -90,11 +96,11 @@ export const ProductoCombobox = forwardRef<HTMLButtonElement, ProductoComboboxPr
             aria-expanded={open}
             aria-invalid={ariaInvalid}
             aria-describedby={ariaDescribedBy}
-            disabled={disabled || productos.length === 0}
+            disabled={disabled || listable.length === 0}
             className={cn('h-9 w-full justify-between font-normal', className)}
           >
             <span className="truncate text-left">
-              {productos.length === 0
+              {listable.length === 0
                 ? 'Cargando…'
                 : selected
                   ? productoLabel(selected)
@@ -113,7 +119,7 @@ export const ProductoCombobox = forwardRef<HTMLButtonElement, ProductoComboboxPr
             <CommandList>
               <CommandEmpty>Sin coincidencias.</CommandEmpty>
               <CommandGroup>
-                {productos.map((p) => (
+                {listable.map((p) => (
                   <CommandItem
                     key={p.id}
                     value={String(p.id)}

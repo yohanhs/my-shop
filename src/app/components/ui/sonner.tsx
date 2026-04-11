@@ -1,9 +1,15 @@
 import { Toaster as Sonner } from 'sonner';
 import 'sonner/dist/styles.css';
 
-export function Toaster() {
+type ToasterProps = {
+  /** Alineado con la clase `dark` de la app (modo oscuro). */
+  theme?: 'light' | 'dark' | 'system';
+};
+
+export function Toaster({ theme = 'light' }: ToasterProps) {
   return (
     <Sonner
+      theme={theme}
       position="top-right"
       richColors
       closeButton

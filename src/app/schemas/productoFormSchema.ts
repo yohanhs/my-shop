@@ -32,6 +32,8 @@ export const productoFormSchema = yup.object({
     .min(0, 'Debe ser mayor o igual a 0.')
     .required('Obligatorio.'),
   imagenPath: yup.string().default(''),
+  /** Vacío = sin caducidad; si hay texto debe ser fecha válida (controlada en el picker). */
+  fechaCaducidad: yup.string().trim().default(''),
   status: statusSchema,
 });
 
@@ -46,5 +48,6 @@ export const productoFormDefaultValues: ProductoFormValues = {
   stockActual: 0,
   stockMinimo: 0,
   imagenPath: '',
+  fechaCaducidad: '',
   status: 'ACTIVE',
 };

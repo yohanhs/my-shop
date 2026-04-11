@@ -1,4 +1,6 @@
+import type { Prisma } from '@prisma/client';
 import { ipcMain } from 'electron';
+import { assertAuthenticated, assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildProductoWhere, type ListPagedOpts } from './productoListWhere';
 
@@ -10,6 +12,17 @@ const PRODUCTO_CHANNELS = [
   'producto:delete',
 ] as const;
 
+function parseFechaCaducidad(raw: unknown): Date | null {
+  if (raw == null) return null;
+  if (typeof raw === 'string' && raw.trim() === '') return null;
+  const s = String(raw).trim();
+  const d = new Date(s.length <= 10 ? `${s}T12:00:00` : s);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error('La fecha de caducidad no es válida.');
+  }
+  return d;
+}
+
 export function registerProductoIpc(): void {
   const prisma = getPrismaClient();
 
@@ -18,6 +31,7 @@ export function registerProductoIpc(): void {
   }
 
   ipcMain.handle('producto:listPaged', async (_event, opts: ListPagedOpts) => {
+    assertAuthenticated();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
@@ -38,40 +52,83 @@ export function registerProductoIpc(): void {
   });
 
   ipcMain.handle('producto:getById', async (_event, id: number) => {
+    assertAuthenticated();
     return prisma.producto.findUnique({ where: { id } });
   });
 
-  ipcMain.handle('producto:create', async (_event, data: {
-    nombre: string;
-    sku: string;
-    descripcion?: string | null;
-    precioCosto: number;
-    precioVenta: number;
-    stockActual?: number;
-    stockMinimo?: number;
-    imagenPath?: string;
-  }) => {
-    return prisma.producto.create({ data });
-  });
+  ipcMain.handle(
+    'producto:create',
+    async (
+      _event,
+      data: {
+        nombre: string;
+        sku: string;
+        descripcion?: string | null;
+        precioCosto: number;
+        precioVenta: number;
+        stockActual?: number;
+        stockMinimo?: number;
+        imagenPath?: string;
+        fechaCaducidad?: string | null;
+      },
+    ) => {
+      assertNotCajero();
+      const fechaCaducidad = parseFechaCaducidad(data.fechaCaducidad);
+      return prisma.producto.create({
+        data: {
+          nombre: data.nombre.trim(),
+          sku: data.sku.trim(),
+          descripcion: data.descripcion ?? null,
+          precioCosto: data.precioCosto,
+          precioVenta: data.precioVenta,
+          stockActual: data.stockActual ?? 0,
+          stockMinimo: data.stockMinimo ?? 0,
+          imagenPath: data.imagenPath?.trim() || null,
+          fechaCaducidad,
+        },
+      });
+    },
+  );
 
-  ipcMain.handle('producto:update', async (_event, id: number, data: {
-    nombre?: string;
-    sku?: string;
-    descripcion?: string | null;
-    precioCosto?: number;
-    precioVenta?: number;
-    stockActual?: number;
-    stockMinimo?: number;
-    imagenPath?: string;
-    status?: string;
-  }) => {
-    return prisma.producto.update({
-      where: { id },
-      data,
-    });
-  });
+  ipcMain.handle(
+    'producto:update',
+    async (
+      _event,
+      id: number,
+      data: {
+        nombre?: string;
+        sku?: string;
+        descripcion?: string | null;
+        precioCosto?: number;
+        precioVenta?: number;
+        stockActual?: number;
+        stockMinimo?: number;
+        imagenPath?: string;
+        fechaCaducidad?: string | null;
+        status?: string;
+      },
+    ) => {
+      assertNotCajero();
+      const payload: Prisma.ProductoUpdateInput = {};
+      if (data.nombre !== undefined) payload.nombre = data.nombre.trim();
+      if (data.sku !== undefined) payload.sku = data.sku.trim();
+      if (data.descripcion !== undefined) payload.descripcion = data.descripcion;
+      if (data.precioCosto !== undefined) payload.precioCosto = data.precioCosto;
+      if (data.precioVenta !== undefined) payload.precioVenta = data.precioVenta;
+      if (data.stockActual !== undefined) payload.stockActual = data.stockActual;
+      if (data.stockMinimo !== undefined) payload.stockMinimo = data.stockMinimo;
+      if (data.imagenPath !== undefined) payload.imagenPath = data.imagenPath?.trim() || null;
+      if (data.fechaCaducidad !== undefined) {
+        payload.fechaCaducidad = parseFechaCaducidad(data.fechaCaducidad);
+      }
+      if (data.status !== undefined) payload.status = data.status;
+
+      return prisma.producto.update({ where: { id }, data: payload });
+    },
+  );
 
   ipcMain.handle('producto:delete', async (_event, id: number) => {
+    assertNotCajero();
     return prisma.producto.delete({ where: { id } });
   });
 }

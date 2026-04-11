@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-const ROLES = ['Admin', 'Vendedor', 'Inventarista'] as const;
+/** Alineado con `seedDefaultAuth` en Electron: solo SuperAdmin y Cajero. */
+const ROLES = ['SuperAdmin', 'Cajero'] as const;
 
 const DEFAULT_ADMIN = {
-  nombre: 'Administrador',
+  nombre: 'Super administrador',
   username: 'admin',
   password: 'admin123',
 };
@@ -24,13 +25,11 @@ async function main() {
     console.log(`  Rol "${rolNombre}" creado/verificado.`);
   }
 
-  // Obtener rol Admin
-  const adminRol = await prisma.rol.findUnique({ where: { nombre: 'Admin' } });
-  if (!adminRol) {
-    throw new Error('No se encontró el rol Admin');
+  const superRol = await prisma.rol.findUnique({ where: { nombre: 'SuperAdmin' } });
+  if (!superRol) {
+    throw new Error('No se encontró el rol SuperAdmin');
   }
 
-  // Crear usuario Admin por defecto
   const existingAdmin = await prisma.usuario.findUnique({
     where: { username: DEFAULT_ADMIN.username },
   });
@@ -44,13 +43,13 @@ async function main() {
         nombre: DEFAULT_ADMIN.nombre,
         username: DEFAULT_ADMIN.username,
         passwordHash,
-        rolId: adminRol.id,
+        rolId: superRol.id,
         status: 'ACTIVE',
       },
     });
-    console.log(`  Usuario Admin creado (user: ${DEFAULT_ADMIN.username}, pass: ${DEFAULT_ADMIN.password})`);
+    console.log(`  Usuario por defecto creado (user: ${DEFAULT_ADMIN.username}, pass: ${DEFAULT_ADMIN.password})`);
   } else {
-    console.log('  Usuario Admin ya existe, omitiendo.');
+    console.log('  Usuario admin ya existe, omitiendo.');
   }
 
   // Crear configuración por defecto

@@ -28,8 +28,8 @@ export const ventaFormSchema = yup.object({
   lineas: yup
     .array()
     .of(lineaSchema)
-    .min(1, 'Agrega al menos una línea.')
-    .required('Agrega al menos una línea.'),
+    .min(1, 'Agrega al menos un producto.')
+    .required('Agrega al menos un producto.'),
 });
 
 /** Tipado explícito: InferType de Yup marca `lineas` como opcional y rompe react-hook-form. */

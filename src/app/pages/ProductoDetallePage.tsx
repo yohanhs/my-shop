@@ -16,6 +16,20 @@ function formatFecha(iso: string): string {
   }).format(d);
 }
 
+function formatSoloFecha(iso: string | null | undefined): { texto: string; vencido: boolean } {
+  if (!iso) return { texto: 'Sin caducidad', vencido: false };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { texto: iso, vencido: false };
+  const inicioHoy = new Date();
+  inicioHoy.setHours(0, 0, 0, 0);
+  const inicioCad = new Date(d);
+  inicioCad.setHours(0, 0, 0, 0);
+  return {
+    texto: new Intl.DateTimeFormat('es-MX', { dateStyle: 'long' }).format(d),
+    vencido: inicioCad < inicioHoy,
+  };
+}
+
 function DetalleCampo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
@@ -100,6 +114,7 @@ export function ProductoDetallePage() {
 
   const p = producto;
   const activo = p.status === 'ACTIVE';
+  const cad = formatSoloFecha(p.fechaCaducidad);
 
   return (
     <div className="space-y-6">
@@ -149,6 +164,16 @@ export function ProductoDetallePage() {
               </span>
             </DetalleCampo>
             <DetalleCampo etiqueta="Stock mínimo">{p.stockMinimo}</DetalleCampo>
+            <DetalleCampo etiqueta="Caducidad">
+              {p.fechaCaducidad ? (
+                <span className={cad.vencido ? 'font-semibold text-destructive' : undefined}>{cad.texto}</span>
+              ) : (
+                <span className="text-muted-foreground">{cad.texto}</span>
+              )}
+              {cad.vencido ? (
+                <span className="mt-1 block text-xs text-destructive">Fecha vencida</span>
+              ) : null}
+            </DetalleCampo>
             <div className="sm:col-span-2">
               <DetalleCampo etiqueta="Descripción">
                 {p.descripcion ? (

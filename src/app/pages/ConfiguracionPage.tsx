@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Save, Settings } from 'lucide-react';
+import { FolderOpen, Save, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,12 +16,14 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { ImageDropField } from '@/components/ui/image-drop-field';
 import { Input } from '@/components/ui/input';
 import {
   configuracionFormDefaults,
   configuracionFormSchema,
   type ConfiguracionFormValues,
 } from '@/schemas/configuracionFormSchema';
+import { dispatchShopConfigUpdated } from '@/lib/shopBranding';
 import type { Configuracion } from '@/types/electron';
 
 function mapToFormValues(c: Configuracion): ConfiguracionFormValues {
@@ -30,6 +32,7 @@ function mapToFormValues(c: Configuracion): ConfiguracionFormValues {
     moneda: c.moneda,
     impuestoPorcentaje: c.impuestoPorcentaje,
     logoPath: c.logoPath ?? '',
+    imagenesDirDefault: c.imagenesDirDefault ?? '',
   };
 }
 
@@ -90,8 +93,11 @@ export function ConfiguracionPage() {
         moneda: values.moneda.trim().toUpperCase(),
         impuestoPorcentaje: values.impuestoPorcentaje,
         logoPath: values.logoPath.trim() === '' ? null : values.logoPath.trim(),
+        imagenesDirDefault:
+          values.imagenesDirDefault.trim() === '' ? null : values.imagenesDirDefault.trim(),
       });
       toast.success('Configuración guardada');
+      dispatchShopConfigUpdated();
     } catch (e) {
       const msg = (e as Error).message;
       setServerError(msg);
@@ -215,20 +221,73 @@ export function ConfiguracionPage() {
 
               <FormField
                 control={form.control}
+                name="imagenesDirDefault"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Carpeta por defecto para imágenes</FormLabel>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                      <FormControl>
+                        <Input
+                          readOnly
+                          placeholder="Sin carpeta personalizada (se usa la carpeta interna de la app)"
+                          disabled={saving}
+                          className="font-mono text-xs"
+                          {...field}
+                          value={field.value ?? ''}
+                        />
+                      </FormControl>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={saving || !window.api?.file}
+                          className="gap-2"
+                          onClick={() => {
+                            void (async () => {
+                              const fileApi = window.api?.file;
+                              if (!fileApi) return;
+                              const picked = await fileApi.pickImagesDirectory();
+                              if (picked) field.onChange(picked);
+                            })();
+                          }}
+                        >
+                          <FolderOpen className="h-4 w-4" aria-hidden />
+                          Elegir carpeta
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={saving || !field.value?.trim()}
+                          onClick={() => field.onChange('')}
+                        >
+                          Quitar
+                        </Button>
+                      </div>
+                    </div>
+                    <FormDescription>
+                      Las imágenes que importes (logo y productos) se copiarán a esta carpeta. Si la dejas vacía, se
+                      usa una carpeta interna en los datos de la aplicación.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="logoPath"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ruta del logo (opcional)</FormLabel>
+                    <FormLabel>Logo de la tienda (opcional)</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="/ruta/al/logo.png"
+                      <ImageDropField
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
                         disabled={saving}
-                        {...field}
+                        browseLabel="Elegir logo…"
                       />
                     </FormControl>
-                    <FormDescription>
-                      Ruta local al archivo de imagen para mostrar en documentos (si la implementas en la app).
-                    </FormDescription>
+                    <FormDescription>Se guarda en la base de datos la ruta del archivo copiado.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

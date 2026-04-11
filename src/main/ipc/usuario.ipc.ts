@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import bcrypt from 'bcryptjs';
+import { assertAuthenticated, assertSuperAdmin, getAuthSession, setAuthSession } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 import { buildUsuarioWhere, type UsuarioListPagedOpts } from './usuarioListWhere';
 
@@ -16,6 +17,18 @@ async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, salt);
 }
 
+const ROLES_ASIGNABLES = ['SuperAdmin', 'Cajero'] as const;
+
+async function assertRolIdAssignable(
+  prisma: ReturnType<typeof getPrismaClient>,
+  rolId: number,
+): Promise<void> {
+  const r = await prisma.rol.findUnique({ where: { id: rolId } });
+  if (!r || !(ROLES_ASIGNABLES as readonly string[]).includes(r.nombre)) {
+    throw new Error('Solo pueden asignarse los roles SuperAdmin o Cajero.');
+  }
+}
+
 export function registerUsuarioIpc(): void {
   const prisma = getPrismaClient();
 
@@ -24,6 +37,7 @@ export function registerUsuarioIpc(): void {
   }
 
   ipcMain.handle('usuario:listPaged', async (_event, opts: UsuarioListPagedOpts) => {
+    assertSuperAdmin();
     const page = Math.max(1, Math.floor(Number(opts?.page) || 1));
     const rawSize = Math.floor(Number(opts?.pageSize) || 10);
     const pageSize = Math.min(100, Math.max(1, rawSize));
@@ -56,6 +70,14 @@ export function registerUsuarioIpc(): void {
   });
 
   ipcMain.handle('usuario:getById', async (_event, id: number) => {
+    assertAuthenticated();
+    const snap = getAuthSession();
+    if (!snap) throw new Error('Sesión no válida.');
+    const isElevated = snap.rolNombre === 'SuperAdmin';
+    if (!isElevated && id !== snap.usuarioId) {
+      throw new Error('No autorizado.');
+    }
+
     const u = await prisma.usuario.findUnique({
       where: { id },
       include: { rol: true },
@@ -85,6 +107,8 @@ export function registerUsuarioIpc(): void {
         status?: string;
       },
     ) => {
+      assertSuperAdmin();
+      await assertRolIdAssignable(prisma, data.rolId);
       const passwordHash = await hashPassword(data.password);
       const u = await prisma.usuario.create({
         data: {
@@ -122,6 +146,14 @@ export function registerUsuarioIpc(): void {
         status?: string;
       },
     ) => {
+      assertAuthenticated();
+      const snap = getAuthSession();
+      if (!snap) throw new Error('Sesión no válida.');
+      const isElevated = snap.rolNombre === 'SuperAdmin';
+      if (!isElevated && id !== snap.usuarioId) {
+        throw new Error('No autorizado.');
+      }
+
       const updatePayload: {
         nombre?: string;
         username?: string;
@@ -132,12 +164,18 @@ export function registerUsuarioIpc(): void {
 
       if (data.nombre !== undefined) updatePayload.nombre = data.nombre.trim();
       if (data.username !== undefined) updatePayload.username = data.username.trim();
-      if (data.rolId !== undefined) updatePayload.rolId = data.rolId;
-      if (data.status === 'ACTIVE' || data.status === 'INACTIVE') {
-        updatePayload.status = data.status;
+      if (isElevated) {
+        if (data.rolId !== undefined) updatePayload.rolId = data.rolId;
+        if (data.status === 'ACTIVE' || data.status === 'INACTIVE') {
+          updatePayload.status = data.status;
+        }
       }
       if (typeof data.password === 'string' && data.password.length > 0) {
         updatePayload.passwordHash = await hashPassword(data.password);
+      }
+
+      if (updatePayload.rolId !== undefined) {
+        await assertRolIdAssignable(prisma, updatePayload.rolId);
       }
 
       const u = await prisma.usuario.update({
@@ -145,6 +183,15 @@ export function registerUsuarioIpc(): void {
         data: updatePayload,
         include: { rol: true },
       });
+      if (snap.usuarioId === u.id) {
+        setAuthSession({
+          usuarioId: u.id,
+          username: u.username,
+          nombre: u.nombre,
+          rolId: u.rolId,
+          rolNombre: u.rol.nombre,
+        });
+      }
       return {
         id: u.id,
         nombre: u.nombre,
@@ -159,11 +206,16 @@ export function registerUsuarioIpc(): void {
   );
 
   ipcMain.handle('usuario:delete', async (_event, id: number) => {
+    assertSuperAdmin();
     const movCount = await prisma.movimientoStock.count({ where: { usuarioId: id } });
     if (movCount > 0) {
       throw new Error(
         `No se puede eliminar el usuario: tiene ${movCount} movimiento(s) de stock asociado(s).`,
       );
+    }
+    const snap = getAuthSession();
+    if (snap?.usuarioId === id) {
+      setAuthSession(null);
     }
     await prisma.usuario.delete({ where: { id } });
     return { ok: true };
