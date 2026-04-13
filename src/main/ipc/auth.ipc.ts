@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient, type Rol, type Usuario } from '@prisma/client';
+import { Prisma, type PrismaClient, type Rol, type Usuario } from '../db/generated/client';
 import { ipcMain } from 'electron';
 import bcrypt from 'bcryptjs';
 import { getPrismaClient } from '../db/client';

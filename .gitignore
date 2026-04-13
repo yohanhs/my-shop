@@ -1,5 +1,7 @@
 node_modules/
 dist/
+src/main/db/generated/
+release/
 *.db
 *.db-journal
 .env

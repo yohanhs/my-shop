@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../db/generated/client';
 import { ipcMain } from 'electron';
 import { assertAuthenticated, assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';

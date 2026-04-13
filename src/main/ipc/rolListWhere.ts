@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../db/generated/client';
 
 export type RolListPagedOpts = {
   page?: number;

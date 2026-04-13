@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 
+import { registerLicenseIpc, startLicenseMonitoring } from './licenseManager.js';
 import { registerShopImgHandler, registerShopImgPrivileges } from './protocols/shopImgProtocol';
 
 registerShopImgPrivileges();
@@ -52,6 +53,11 @@ async function createWindow(): Promise<void> {
     },
   }));
 
+  /** Tras cargar la UI para que existan listeners del preload (avisos / revocación de licencia). */
+  mainWindow.webContents.once('did-finish-load', () => {
+    startLicenseMonitoring();
+  });
+
   // En desarrollo carga el servidor de Vite, en producción el build
   const isDev = !app.isPackaged;
   if (isDev) {
@@ -67,6 +73,7 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  registerLicenseIpc();
   registerShopImgHandler();
   registerAuthIpc();
   registerFileIpc();

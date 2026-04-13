@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  /** Fuera de node_modules/.prisma para que electron-builder copie el cliente al .app/.exe. */
+  output        = "./generated/client"
+  /** Motores para empaquetar desde Mac hacia Windows/Linux y cubrir ambas arquitecturas de macOS. */
+  binaryTargets = ["native", "windows", "darwin", "darwin-arm64", "debian-openssl-3.0.x"]
 }
 
 datasource db {

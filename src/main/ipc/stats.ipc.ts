@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../db/generated/client';
 
 import { assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';

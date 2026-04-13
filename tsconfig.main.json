@@ -11,8 +11,10 @@
     "outDir": "dist",
     "rootDir": "src",
     "resolveJsonModule": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "allowJs": true,
+    "checkJs": false
   },
   "include": ["src/main/**/*", "src/preload/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/main/db/generated"]
 }

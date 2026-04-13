@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+import type { LicenseRevokedPayload, LicenseWarnPayload } from '../app/types/electron';
+
 export interface ProductoInput {
   nombre: string;
   sku: string;
@@ -190,8 +192,31 @@ const authApi = {
   logout: () => ipcRenderer.invoke('auth:logout'),
 };
 
+const licenseApi = {
+  check: () => ipcRenderer.invoke('check-license'),
+  selectAndInstall: () => ipcRenderer.invoke('license:selectAndInstall'),
+  getMachineId: () => ipcRenderer.invoke('license:getMachineId'),
+  onLicenseWarning: (handler: (payload: LicenseWarnPayload) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, payload: LicenseWarnPayload) =>
+      handler(payload);
+    ipcRenderer.on('license:warn', subscription);
+    return () => {
+      ipcRenderer.removeListener('license:warn', subscription);
+    };
+  },
+  onLicenseRevoked: (handler: (payload: LicenseRevokedPayload) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, payload: LicenseRevokedPayload) =>
+      handler(payload);
+    ipcRenderer.on('license:revoked', subscription);
+    return () => {
+      ipcRenderer.removeListener('license:revoked', subscription);
+    };
+  },
+};
+
 contextBridge.exposeInMainWorld('api', {
   auth: authApi,
+  license: licenseApi,
   producto: productoApi,
   proveedor: proveedorApi,
   configuracion: configuracionApi,

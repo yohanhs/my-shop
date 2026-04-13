@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../db/generated/client';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

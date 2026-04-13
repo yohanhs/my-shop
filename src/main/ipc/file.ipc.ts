@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from 'electron';
 import fs from 'fs/promises';
 import path from 'path';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../db/generated/client';
 
 import { assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';

@@ -645,8 +645,35 @@ export interface AuthApi {
   logout: () => Promise<boolean>;
 }
 
+export type LicenseCheckResponse =
+  | { valid: true; expiresAt?: string; daysRemaining?: number }
+  | { valid: false; reason: string; code?: string };
+
+export type LicenseWarnPayload = { daysRemaining: number; expiresAt: string };
+
+export type LicenseRevokedPayload = { reason: string; code?: string };
+
+export type LicenseSelectInstallResult = { canceled: true } | LicenseCheckResponse;
+
+export type LicenseGetMachineIdResult =
+  | { ok: true; machineId: string }
+  | { ok: false; reason: string };
+
+export interface LicenseApi {
+  check: () => Promise<LicenseCheckResponse>;
+  /** Abre diálogo, copia el archivo a userData/licencia.lic y vuelve a validar. */
+  selectAndInstall: () => Promise<LicenseSelectInstallResult>;
+  /** Mismo valor que usa la validación de licencia (`node-machine-id`). */
+  getMachineId: () => Promise<LicenseGetMachineIdResult>;
+  /** Suscripción a avisos de caducidad próxima (empaquetado). Devuelve función para dejar de escuchar. */
+  onLicenseWarning: (handler: (payload: LicenseWarnPayload) => void) => () => void;
+  /** Licencia inválida o caducada durante la sesión: cerrar sesión y mostrar activación. */
+  onLicenseRevoked: (handler: (payload: LicenseRevokedPayload) => void) => () => void;
+}
+
 export interface ElectronApi {
   auth: AuthApi;
+  license: LicenseApi;
   producto: ProductoApi;
   proveedor: ProveedorApi;
   configuracion: ConfiguracionApi;
