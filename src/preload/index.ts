@@ -68,6 +68,7 @@ export interface ConfiguracionUpdateInput {
   logoPath?: string | null;
   imagenesDirDefault?: string | null;
   fondoAppPath?: string | null;
+  depreciacionMensual?: number;
 }
 
 export interface VentaLineaInput {
@@ -94,6 +95,13 @@ export interface GastoUpdateInput {
   monto?: number;
   fecha?: string | null;
   categoria?: string;
+}
+
+export interface MermaRegistrarInput {
+  productoId: number;
+  cantidad: number;
+  /** YYYY-MM-DD o vacío = fecha y hora actuales. */
+  fecha?: string | null;
 }
 
 const productoApi = {
@@ -142,6 +150,13 @@ const fileApi = {
   pickImagesDirectory: () => ipcRenderer.invoke('file:pickImagesDirectory'),
 };
 
+const databaseApi = {
+  getDbPath: () => ipcRenderer.invoke('database:getDbPath'),
+  backup: () => ipcRenderer.invoke('database:backup'),
+  restore: () => ipcRenderer.invoke('database:restore'),
+  wipeAllData: () => ipcRenderer.invoke('database:wipeAllData'),
+};
+
 const ventaApi = {
   listPaged: (params: Record<string, unknown>) => ipcRenderer.invoke('venta:listPaged', params),
   getById: (id: number) => ipcRenderer.invoke('venta:getById', id),
@@ -163,6 +178,11 @@ const statsApi = {
     ipcRenderer.invoke('stats:getHomeDashboard', range ?? undefined),
 };
 
+const mermaApi = {
+  registrar: (data: MermaRegistrarInput) => ipcRenderer.invoke('merma:registrar', data),
+  listPaged: (params: Record<string, unknown>) => ipcRenderer.invoke('merma:listPaged', params),
+};
+
 const authApi = {
   ensureAdmin: () => ipcRenderer.invoke('auth:ensureAdmin'),
   login: (username: string, password: string) => ipcRenderer.invoke('auth:login', username, password),
@@ -176,8 +196,10 @@ contextBridge.exposeInMainWorld('api', {
   proveedor: proveedorApi,
   configuracion: configuracionApi,
   file: fileApi,
+  database: databaseApi,
   venta: ventaApi,
   gasto: gastoApi,
+  merma: mermaApi,
   stats: statsApi,
   rol: rolApi,
   usuario: usuarioApi,

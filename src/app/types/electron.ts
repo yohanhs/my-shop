@@ -168,6 +168,8 @@ export interface Configuracion {
   imagenesDirDefault: string | null;
   /** Ruta local de imagen de fondo del panel (difuminada); null = solo degradado. */
   fondoAppPath: string | null;
+  /** Depreciación mensual estimada (config.); el inicio prorratea sobre el periodo (~30 días/mes). */
+  depreciacionMensual: number;
 }
 
 export interface ConfiguracionAmbientPublic {
@@ -181,6 +183,7 @@ export interface ConfiguracionUpdateInput {
   logoPath?: string | null;
   imagenesDirDefault?: string | null;
   fondoAppPath?: string | null;
+  depreciacionMensual?: number;
 }
 
 export interface ConfiguracionApi {
@@ -194,6 +197,24 @@ export interface FileApi {
   importImage: (sourcePath: string) => Promise<{ path: string }>;
   pickImageFile: () => Promise<string | null>;
   pickImagesDirectory: () => Promise<string | null>;
+}
+
+export type DatabaseBackupResult =
+  | { canceled: true }
+  | { canceled: false; path: string };
+
+export type DatabaseRestoreResult =
+  | { canceled: true }
+  | { canceled: false; ok: true; autoBackupPath: string };
+
+export type DatabaseWipeResult = { ok: true };
+
+export interface DatabaseApi {
+  getDbPath: () => Promise<{ path: string }>;
+  backup: () => Promise<DatabaseBackupResult>;
+  restore: () => Promise<DatabaseRestoreResult>;
+  /** Solo SuperAdmin. Borra datos de negocio y deja admin/admin123 + configuración por defecto. */
+  wipeAllData: () => Promise<DatabaseWipeResult>;
 }
 
 // ─── Venta ───────────────────────────────────────────────────────────────
@@ -346,6 +367,64 @@ export interface GastoApi {
   delete: (id: number) => Promise<Gasto>;
 }
 
+// ─── Mermas (movimientos_stock, motivo MERMA) ────────────────────────────
+
+export interface MermaRegistrarInput {
+  productoId: number;
+  cantidad: number;
+  /** YYYY-MM-DD o vacío = ahora. */
+  fecha?: string | null;
+}
+
+export interface MermaRegistroResult {
+  id: number;
+  fecha: string;
+  cantidad: number;
+  productoId: number;
+  stockActual: number;
+}
+
+export interface MermaListItem {
+  id: number;
+  fecha: string;
+  cantidad: number;
+  productoId: number;
+  productoNombre: string;
+  productoSku: string;
+  usuarioNombre: string;
+  /** cantidad × costo actual del producto al listar (referencia). */
+  costoReferencia: number;
+}
+
+export interface MermaListFilters {
+  productoBuscar: string;
+  fechaDesde: string;
+  fechaHasta: string;
+}
+
+export const defaultMermaListFilters: MermaListFilters = {
+  productoBuscar: '',
+  fechaDesde: '',
+  fechaHasta: '',
+};
+
+export interface MermaListPagedResult {
+  items: MermaListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type MermaListPagedParams = {
+  page: number;
+  pageSize: number;
+} & MermaListFilters;
+
+export interface MermaApi {
+  registrar: (data: MermaRegistrarInput) => Promise<MermaRegistroResult>;
+  listPaged: (params: MermaListPagedParams) => Promise<MermaListPagedResult>;
+}
+
 // ─── Rol ─────────────────────────────────────────────────────────────────
 
 export interface Rol {
@@ -476,6 +555,13 @@ export interface HomeDashboardSeriesPoint {
   gastos: number;
 }
 
+/** Ingreso neto estimado en un mes calendario (misma fórmula que `resumenNeto` del periodo filtrado). */
+export interface HomeDashboardNetMonthPoint {
+  monthKey: string;
+  mesCorto: string;
+  ingresoNeto: number;
+}
+
 export interface HomeDashboardMetodoPago {
   metodoPago: string;
   total: number;
@@ -502,6 +588,20 @@ export interface HomeDashboardRangeInput {
   hasta: string;
 }
 
+/**
+ * Ingreso neto estimado =
+ * ventas − costo histórico vendido − gastos − depreciación prorrateada − costo estimado mermas.
+ * Las mermas usan costo actual del producto al calcular (mismo criterio que el historial de mermas).
+ */
+export interface HomeDashboardNetIncomeSummary {
+  ingresoNeto: HomeDashboardMom;
+  costoVentas: HomeDashboardMom;
+  depreciacionEstimada: HomeDashboardMom;
+  /** Σ mermas (motivo MERMA) × precio_costo actual del producto en el periodo. */
+  costoMermas: HomeDashboardMom;
+  depreciacionMensual: number;
+}
+
 export interface HomeDashboardStats {
   moneda: string;
   /** Etiqueta del periodo seleccionado (p. ej. rango de fechas). */
@@ -513,7 +613,10 @@ export interface HomeDashboardStats {
   ventasCount: { actual: number; anterior: number };
   ticketPromedio: HomeDashboardMom;
   balanceActual: number;
+  resumenNeto: HomeDashboardNetIncomeSummary;
   series6m: HomeDashboardSeriesPoint[];
+  /** Seis meses calendario terminando en el mes de la fecha «Hasta» del filtro. */
+  netoEstimadoUltimos6Meses: HomeDashboardNetMonthPoint[];
   metodoPagoMes: HomeDashboardMetodoPago[];
   /** Top unidades vendidas en el periodo (ventas activas). */
   productosMasVendidos: HomeDashboardProductRank[];
@@ -548,8 +651,10 @@ export interface ElectronApi {
   proveedor: ProveedorApi;
   configuracion: ConfiguracionApi;
   file: FileApi;
+  database: DatabaseApi;
   venta: VentaApi;
   gasto: GastoApi;
+  merma: MermaApi;
   stats: StatsApi;
   rol: RolApi;
   usuario: UsuarioApi;

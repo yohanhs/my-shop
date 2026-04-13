@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './providers/AuthProvider';
 import { HomePage } from './pages/HomePage';
 import { GastosPage } from './pages/GastosPage';
+import { MermasPage } from './pages/MermasPage';
 import { ProductoDetallePage } from './pages/ProductoDetallePage';
 import { ProductosPage } from './pages/ProductosPage';
 import { ConfiguracionPage } from './pages/ConfiguracionPage';
@@ -64,6 +65,7 @@ function AppRoutes() {
             <Route path="ventas/:id" element={<VentaDetallePage />} />
             <Route path="ventas" element={<VentasPage />} />
             <Route path="gastos" element={<GastosPage />} />
+            <Route path="mermas" element={<MermasPage />} />
             <Route path="perfil" element={<PerfilPage />} />
             <Route path="configuracion" element={<ConfiguracionPage />} />
           </Route>

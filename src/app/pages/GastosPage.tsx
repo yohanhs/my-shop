@@ -27,6 +27,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   gastoFormDefaultValues,
   gastoFormSchema,
   gastoFormToInput,
@@ -36,6 +43,32 @@ import {
 } from '@/schemas/gastoFormSchema';
 import type { Gasto, GastoInput, GastoUpdateInput } from '@/types/electron';
 import { useGastoStore } from '@/store/useGastoStore';
+
+/** Categorías sugeridas (mismo criterio que antes con datalist). */
+const GASTO_CATEGORIA_PRESETS = [
+  'Arriendo del local',
+  'Servicios',
+  'Nómina',
+  'Mantenimiento',
+  'Papelería',
+  'Transporte',
+  'Electricidad',
+  'Agua',
+  'Gas',
+  'Teléfono',
+  'Internet',
+  'Impuestos',
+  'Seguros',
+  'Mantenimiento',
+  'Otros',
+] as const;
+
+/** Valor interno del Select para categoría libre. */
+const GASTO_CATEGORIA_OTRA = '__otra__';
+
+function isPresetGastoCategoria(value: string): boolean {
+  return (GASTO_CATEGORIA_PRESETS as readonly string[]).includes(value);
+}
 
 type FormMode = 'create' | 'edit';
 
@@ -191,29 +224,57 @@ function GastoFormModal({
             <FormField
               control={form.control}
               name="categoria"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ej. Arriendo, Servicios, Nómina, Otros…"
+              render={({ field }) => {
+                const selectValue =
+                  field.value === '' || field.value === undefined
+                    ? undefined
+                    : isPresetGastoCategoria(field.value)
+                      ? field.value
+                      : GASTO_CATEGORIA_OTRA;
+                const showCustomInput = selectValue === GASTO_CATEGORIA_OTRA;
+
+                return (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select
                       disabled={submitting}
-                      list="gasto-categorias-sugeridas"
-                      {...field}
-                    />
-                  </FormControl>
-                  <datalist id="gasto-categorias-sugeridas">
-                    <option value="Arriendo" />
-                    <option value="Servicios" />
-                    <option value="Nómina" />
-                    <option value="Mantenimiento" />
-                    <option value="Papelería" />
-                    <option value="Transporte" />
-                    <option value="Otros" />
-                  </datalist>
-                  <FormMessage />
-                </FormItem>
-              )}
+                      value={selectValue}
+                      onValueChange={(v) => {
+                        if (v === GASTO_CATEGORIA_OTRA) {
+                          field.onChange('');
+                        } else {
+                          field.onChange(v);
+                        }
+                      }}
+                    >
+                      <FormControl>
+                        <SelectTrigger ref={field.ref} name={field.name} onBlur={field.onBlur}>
+                          <SelectValue placeholder="Elige una categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {GASTO_CATEGORIA_PRESETS.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value={GASTO_CATEGORIA_OTRA}>Otra (escribir)…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {showCustomInput ? (
+                      <Input
+                        className="mt-2"
+                        placeholder="Nombre de la categoría"
+                        disabled={submitting}
+                        value={isPresetGastoCategoria(field.value) ? '' : field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        onBlur={field.onBlur}
+                      />
+                    ) : null}
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <DialogFooter className="gap-2 sm:gap-0">

@@ -2,7 +2,9 @@ import { PrismaClient } from '@prisma/client';
 import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
-let prisma: PrismaClient;
+import fsp from 'fs/promises';
+
+let prisma: PrismaClient | undefined;
 
 export function getDbPath(): string {
   const userDataPath = app.getPath('userData');
@@ -150,6 +152,23 @@ async function ensureConfiguracionImagenesDirColumn(client: PrismaClient): Promi
   console.log('[DB] Columna configuracion.imagenes_dir_default añadida (migración incremental).');
 }
 
+async function ensureConfiguracionDepreciacionMensualColumn(client: PrismaClient): Promise<void> {
+  const tables: Array<{ name: string }> = await client.$queryRawUnsafe(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='configuracion'`,
+  );
+  if (tables.length === 0) return;
+
+  const columns = await client.$queryRawUnsafe<Array<{ name: string }>>(
+    `PRAGMA table_info(configuracion)`,
+  );
+  if (columns.some((c) => c.name === 'depreciacion_mensual')) return;
+
+  await client.$executeRawUnsafe(
+    `ALTER TABLE configuracion ADD COLUMN depreciacion_mensual REAL NOT NULL DEFAULT 0`,
+  );
+  console.log('[DB] Columna configuracion.depreciacion_mensual añadida (migración incremental).');
+}
+
 async function ensureConfiguracionFondoAppPathColumn(client: PrismaClient): Promise<void> {
   const tables: Array<{ name: string }> = await client.$queryRawUnsafe(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='configuracion'`,
@@ -211,6 +230,68 @@ export function getPrismaClient(): PrismaClient {
   return prisma;
 }
 
+const SQLITE_MAGIC = 'SQLite format 3';
+
+function assertSqliteFileHeaderSync(filePath: string): void {
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(16);
+    fs.readSync(fd, buf, 0, 16, 0);
+    const head = buf.toString('utf8', 0, 16);
+    if (!head.startsWith(SQLITE_MAGIC)) {
+      throw new Error('El archivo no parece una base SQLite de esta aplicación.');
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+/** Copia la BD activa (y archivos -wal / -shm si existen) a otra ruta. */
+export async function copyCurrentDatabaseTo(destPathRaw: string): Promise<string> {
+  let out = path.resolve(String(destPathRaw).trim());
+  if (!out.toLowerCase().endsWith('.db')) {
+    out += '.db';
+  }
+  const src = getDbPath();
+  await fsp.copyFile(src, out);
+  for (const suf of ['-wal', '-shm'] as const) {
+    try {
+      await fsp.access(src + suf);
+      await fsp.copyFile(src + suf, out + suf);
+    } catch {
+      /* sin WAL o sin copia */
+    }
+  }
+  return out;
+}
+
+/**
+ * Sustituye `my-shop.db` por una copia del archivo indicado y reinicializa Prisma.
+ * Cierra conexiones, borra posibles `-wal`/`-shm` viejos junto al destino y vuelve a abrir.
+ */
+export async function importDatabaseFromFile(sourcePath: string): Promise<void> {
+  const resolved = path.resolve(String(sourcePath).trim());
+  const st = await fsp.stat(resolved).catch(() => null);
+  if (!st?.isFile()) {
+    throw new Error('No se encontró el archivo de respaldo.');
+  }
+  assertSqliteFileHeaderSync(resolved);
+
+  await disconnectPrisma();
+  const dest = getDbPath();
+  const dir = path.dirname(dest);
+  await fsp.mkdir(dir, { recursive: true });
+  for (const suf of ['-wal', '-shm'] as const) {
+    try {
+      await fsp.unlink(dest + suf);
+    } catch {
+      /* ok */
+    }
+  }
+  await fsp.copyFile(resolved, dest);
+  await initializeDatabase();
+}
+
 export async function initializeDatabase(): Promise<PrismaClient> {
   const client = getPrismaClient();
   await client.$connect();
@@ -219,6 +300,7 @@ export async function initializeDatabase(): Promise<PrismaClient> {
   await ensureProductoDescripcionColumn(client);
   await ensureConfiguracionImagenesDirColumn(client);
   await ensureConfiguracionFondoAppPathColumn(client);
+  await ensureConfiguracionDepreciacionMensualColumn(client);
   await ensureProductoFechaCaducidadColumn(client);
   await ensureVentaUsuarioIdColumn(client);
   return client;
@@ -227,5 +309,6 @@ export async function initializeDatabase(): Promise<PrismaClient> {
 export async function disconnectPrisma(): Promise<void> {
   if (prisma) {
     await prisma.$disconnect();
+    prisma = undefined;
   }
 }

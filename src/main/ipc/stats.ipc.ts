@@ -1,4 +1,6 @@
 import { ipcMain } from 'electron';
+import type { PrismaClient } from '@prisma/client';
+
 import { assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 
@@ -42,6 +44,35 @@ function inclusiveDayCount(start: Date, end: Date): number {
   const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
   const b = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
   return Math.floor((b - a) / 86400000) + 1;
+}
+
+/** Prorrateo simple: mensual × (días del periodo / 30). */
+function depreciacionEstimadaEnPeriodo(mensual: number, desde: Date, hasta: Date): number {
+  if (!Number.isFinite(mensual) || mensual <= 0) return 0;
+  const dias = inclusiveDayCount(desde, hasta);
+  return (mensual / 30) * dias;
+}
+
+async function sumCostoVentasPeriodo(prisma: PrismaClient, desde: Date, hasta: Date): Promise<number> {
+  const rows = await prisma.$queryRaw<{ s: unknown }[]>`
+    SELECT COALESCE(SUM(CAST(vd.cantidad AS REAL) * vd.precio_costo_unitario_historico), 0) AS s
+    FROM venta_detalles vd
+    INNER JOIN ventas v ON v.id = vd.venta_id
+    WHERE v.estado = 'ACTIVA' AND v.fecha >= ${desde} AND v.fecha <= ${hasta}
+  `;
+  return Number(rows[0]?.s ?? 0);
+}
+
+/** Costo estimado de mermas: Σ cantidad × costo actual del producto (no hay costo histórico en el movimiento). */
+async function sumCostoMermasPeriodo(prisma: PrismaClient, desde: Date, hasta: Date): Promise<number> {
+  const rows = await prisma.$queryRaw<{ s: unknown }[]>`
+    SELECT COALESCE(SUM(CAST(ms.cantidad AS REAL) * p.precio_costo), 0) AS s
+    FROM movimientos_stock ms
+    INNER JOIN productos p ON p.id = ms.producto_id
+    WHERE ms.motivo = 'MERMA' AND ms.tipo = 'SALIDA'
+      AND ms.fecha >= ${desde} AND ms.fecha <= ${hasta}
+  `;
+  return Number(rows[0]?.s ?? 0);
 }
 
 /** Periodo inmediatamente anterior con el mismo número de días naturales (inclusive). */
@@ -152,13 +183,29 @@ export function registerStatsIpc(): void {
       prisma.venta.count({
         where: { estado: 'ACTIVA', fecha: { gte: prevStart, lte: prevEnd } },
       }),
-      prisma.configuracion.findFirst({ orderBy: { id: 'asc' }, select: { moneda: true } }),
+      prisma.configuracion.findFirst({
+        orderBy: { id: 'asc' },
+        select: { moneda: true, depreciacionMensual: true },
+      }),
     ]);
 
     const ingresosActual = ingAct._sum.total ?? 0;
     const ingresosAnterior = ingPrev._sum.total ?? 0;
     const gastosActual = gasAct._sum.monto ?? 0;
     const gastosAnterior = gasPrev._sum.monto ?? 0;
+
+    const deprecMensual = cfg?.depreciacionMensual ?? 0;
+    const [cogsActual, cogsAnterior, mermasActual, mermasAnterior] = await Promise.all([
+      sumCostoVentasPeriodo(prisma, curStart, curEnd),
+      sumCostoVentasPeriodo(prisma, prevStart, prevEnd),
+      sumCostoMermasPeriodo(prisma, curStart, curEnd),
+      sumCostoMermasPeriodo(prisma, prevStart, prevEnd),
+    ]);
+    const depActual = depreciacionEstimadaEnPeriodo(deprecMensual, curStart, curEnd);
+    const depAnterior = depreciacionEstimadaEnPeriodo(deprecMensual, prevStart, prevEnd);
+
+    const netActual = ingresosActual - cogsActual - gastosActual - depActual - mermasActual;
+    const netAnterior = ingresosAnterior - cogsAnterior - gastosAnterior - depAnterior - mermasAnterior;
 
     const anchorY = curEnd.getFullYear();
     const anchorM = curEnd.getMonth();
@@ -193,6 +240,38 @@ export function registerStatsIpc(): void {
         gastos: gv._sum.monto ?? 0,
       });
     }
+
+    /** Ingreso neto estimado por mes calendario (6 meses hasta el mes de «Hasta»); mismo criterio que el card principal. */
+    const netoEstimadoUltimos6Meses = await Promise.all(
+      [5, 4, 3, 2, 1, 0].map(async (monthsBack) => {
+        const d = new Date(anchorY, anchorM - monthsBack, 1);
+        const yy = d.getFullYear();
+        const mm = d.getMonth();
+        const s = startOfMonth(yy, mm);
+        const e = endOfMonth(yy, mm);
+        const [iv, gv, cogsV, mermV] = await Promise.all([
+          prisma.venta.aggregate({
+            where: { estado: 'ACTIVA', fecha: { gte: s, lte: e } },
+            _sum: { total: true },
+          }),
+          prisma.gasto.aggregate({
+            where: { fecha: { gte: s, lte: e } },
+            _sum: { monto: true },
+          }),
+          sumCostoVentasPeriodo(prisma, s, e),
+          sumCostoMermasPeriodo(prisma, s, e),
+        ]);
+        const ing = iv._sum.total ?? 0;
+        const gas = gv._sum.monto ?? 0;
+        const dep = depreciacionEstimadaEnPeriodo(deprecMensual, s, e);
+        const net = ing - cogsV - gas - dep - mermV;
+        return {
+          monthKey: `${yy}-${String(mm + 1).padStart(2, '0')}`,
+          mesCorto: monthShortEs(yy, mm),
+          ingresoNeto: net,
+        };
+      }),
+    );
 
     const metodoRows = await prisma.venta.groupBy({
       by: ['metodoPago'],
@@ -280,7 +359,31 @@ export function registerStatsIpc(): void {
         momPct: pctMom(ticketPromedioActual, ticketPromedioAnterior),
       },
       balanceActual: ingresosActual - gastosActual,
+      resumenNeto: {
+        ingresoNeto: {
+          actual: netActual,
+          anterior: netAnterior,
+          momPct: pctMom(netActual, netAnterior),
+        },
+        costoVentas: {
+          actual: cogsActual,
+          anterior: cogsAnterior,
+          momPct: pctMom(cogsActual, cogsAnterior),
+        },
+        depreciacionEstimada: {
+          actual: depActual,
+          anterior: depAnterior,
+          momPct: pctMom(depActual, depAnterior),
+        },
+        costoMermas: {
+          actual: mermasActual,
+          anterior: mermasAnterior,
+          momPct: pctMom(mermasActual, mermasAnterior),
+        },
+        depreciacionMensual: deprecMensual,
+      },
       series6m,
+      netoEstimadoUltimos6Meses,
       metodoPagoMes,
       productosMasVendidos: mapRank(masIds),
       productosMenosVendidos: mapRank(menosIds),

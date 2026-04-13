@@ -19,6 +19,7 @@ import {
   Legend,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -61,6 +62,15 @@ function defaultDashboardMonthBounds(): { desde: string; hasta: string } {
     desde: format(first, "yyyy-MM-dd"),
     hasta: format(last, "yyyy-MM-dd"),
   };
+}
+
+/** Días naturales inclusivos entre dos fechas `AAAA-MM-DD` (UTC medianoche). */
+function inclusiveDayCountYmd(desde: string, hasta: string): number {
+  const [ya, ma, da] = desde.split("-").map(Number);
+  const [yb, mb, db] = hasta.split("-").map(Number);
+  const a = Date.UTC(ya, ma - 1, da);
+  const b = Date.UTC(yb, mb - 1, db);
+  return Math.floor((b - a) / 86400000) + 1;
 }
 
 function rangeEstaSemana(): { desde: string; hasta: string } {
@@ -149,7 +159,7 @@ function HomeDashboardRangeToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs bg-primary text-white "
             disabled={presetsOff}
             onClick={() => onApplyRange(rangeEstaSemana())}>
             Esta semana
@@ -158,7 +168,7 @@ function HomeDashboardRangeToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs bg-primary text-white"
             disabled={presetsOff}
             onClick={() => onApplyRange(rangeSemanaPasada())}>
             Semana pasada
@@ -167,7 +177,7 @@ function HomeDashboardRangeToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs bg-primary text-white"
             disabled={presetsOff}
             onClick={() => onApplyRange(defaultDashboardMonthBounds())}>
             Mes actual
@@ -176,7 +186,7 @@ function HomeDashboardRangeToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs bg-primary text-white"
             disabled={presetsOff}
             onClick={() => onApplyRange(rangeMesPasado())}>
             Mes pasado
@@ -185,7 +195,7 @@ function HomeDashboardRangeToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 px-2 text-xs"
+            className="h-8 px-2 text-xs bg-primary text-white"
             disabled={presetsOff}
             onClick={() => onApplyRange(rangeEsteAno())}>
             Este año
@@ -204,6 +214,8 @@ function HomeDashboardRangeToolbar({
 
 /** Alineado con `--primary` en globals (azul más sobrio). */
 const CHART_PRIMARY = "hsl(222 52% 50%)";
+const NET_POSITIVE_BAR = "hsl(142 76% 36%)";
+const NET_NEGATIVE_BAR = "hsl(0 72% 50%)";
 
 const PIE_COLORS = [
   CHART_PRIMARY,
@@ -212,11 +224,19 @@ const PIE_COLORS = [
   "hsl(280 65% 48%)",
 ];
 
-/** KPI: superficie única, sin franja de color (más limpio). */
-const kpiCardClass = "shadow-sm transition-shadow hover:shadow-md";
+/**
+ * KPI con fondo primary. El `Card` base trae `supports-[backdrop-filter]:bg-card/70`, que sin esto
+ * volvería a pintar el fondo “card” en navegadores con backdrop-filter y taparía `bg-primary`.
+ */
+const kpiCardClass =
+  "border-primary/25 bg-primary text-primary-foreground shadow-sm transition-shadow hover:shadow-md supports-[backdrop-filter]:bg-primary supports-[backdrop-filter]:text-primary-foreground dark:border-primary-foreground/20 dark:bg-primary/90";
+
+/** Bloque interior sobre KPI primary: reutiliza `--card` / `--card-foreground` (misma superficie que un Card normal en claro u oscuro). */
+const kpiInsetPanelClass =
+  "space-y-3 rounded-lg border border-border/80 bg-card/95 px-3 py-3 text-sm text-card-foreground shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/90";
 const sectionCardClass =
   "shadow-sm transition-shadow hover:shadow-md";
-const sectionTitleClass = "text-base font-semibold tracking-tight text-foreground/80 dark:text-foreground/85";
+const sectionTitleClass = "text-lg font-bold tracking-tight text-foreground/80 dark:text-foreground/85";
 const sectionDescClass = "text-sm leading-relaxed text-muted-foreground";
 
 function CaducidadProximaTable({
@@ -393,31 +413,40 @@ function metodoLabel(m: string): string {
   }
 }
 
-function MomBadge({ pct, invert }: { pct: number | null; invert?: boolean }) {
+function MomBadge({
+  pct,
+  invert,
+  variant = "default",
+}: {
+  pct: number | null;
+  invert?: boolean;
+  /** `onPrimary`: texto legible sobre fondo primary (KPI). */
+  variant?: "default" | "onPrimary";
+}) {
+  const muted =
+    variant === "onPrimary" ? "text-primary-foreground/70" : "text-muted-foreground";
   if (pct == null) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        Sin comparativa con el periodo anterior
-      </span>
-    );
+    return <span className={cn("text-xs", muted)}>Sin comparativa con el periodo anterior</span>;
   }
   if (pct === 0) {
-    return (
-      <span className="text-xs text-muted-foreground">
-        Igual que el periodo anterior (0%)
-      </span>
-    );
+    return <span className={cn("text-xs", muted)}>Igual que el periodo anterior (0%)</span>;
   }
   const up = pct > 0;
   const down = pct < 0;
   const good = invert ? down : up;
   const bad = invert ? up : down;
+  const goodCls =
+    variant === "onPrimary"
+      ? "text-emerald-200"
+      : "text-emerald-600 dark:text-emerald-400";
+  const badCls =
+    variant === "onPrimary" ? "text-red-200" : "text-red-600 dark:text-red-400";
   return (
     <span
       className={cn(
         "text-xs font-medium tabular-nums",
-        good && "text-emerald-600 dark:text-emerald-400",
-        bad && "text-red-600 dark:text-red-400",
+        good && goodCls,
+        bad && badCls,
       )}>
       {up ? "↑" : "↓"} {Math.abs(pct).toFixed(1)}% vs periodo anterior
     </span>
@@ -442,19 +471,19 @@ function KpiCard({
   return (
     <Card className={kpiCardClass}>
       <CardHeader className="space-y-1 pb-2 pt-5">
-        <p className="text-sm font-medium leading-snug text-muted-foreground">{title}</p>
+        <p className="text-sm font-medium leading-snug text-primary-foreground/85">{title}</p>
         {subtitle ? (
-          <p className="text-xs leading-snug text-muted-foreground/90">{subtitle}</p>
+          <p className="text-xs leading-snug text-primary-foreground/75">{subtitle}</p>
         ) : null}
       </CardHeader>
       <CardContent className="space-y-2 pt-0">
-        <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+        <p className="text-2xl font-semibold tabular-nums tracking-tight text-primary-foreground">
           {value}
         </p>
         {secondary ? (
-          <p className="text-xs leading-relaxed text-muted-foreground">{secondary}</p>
+          <p className="text-xs leading-relaxed text-primary-foreground/75">{secondary}</p>
         ) : null}
-        <MomBadge pct={momPct} invert={invertMom} />
+        <MomBadge pct={momPct} invert={invertMom} variant="onPrimary" />
       </CardContent>
     </Card>
   );
@@ -580,12 +609,16 @@ export function HomeDashboard() {
     ventasCount,
     ticketPromedio,
     balanceActual,
+    resumenNeto,
     series6m,
+    netoEstimadoUltimos6Meses,
     metodoPagoMes,
     productosMasVendidos,
     productosMenosVendidos,
     productosProximosCaducar,
   } = stats;
+
+  const diasRango = inclusiveDayCountYmd(desde, hasta);
 
   const pieData = metodoPagoMes
     .filter((r) => r.total > 0)
@@ -621,14 +654,14 @@ export function HomeDashboard() {
           fetching && "pointer-events-none opacity-60",
         )}>
         <div>
-          <h3 className="text-lg font-semibold tracking-tight text-foreground/85">
+          <h3 className="text-2xl font-bold tracking-tight text-foreground/85">
             Resumen
           </h3>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Cifras de{" "}
-            <span className="font-medium text-foreground/80">{mesActualLabel}</span>{" "}
+            <span className="font-bold text-foreground/80">{mesActualLabel}</span>{" "}
             · Comparativa vs{" "}
-            <span className="font-medium text-foreground/80">{mesAnteriorLabel}</span>{" "}
+            <span className="font-bold text-foreground/80">{mesAnteriorLabel}</span>{" "}
             (misma duración en días; solo ventas activas).
           </p>
         </div>
@@ -649,11 +682,8 @@ export function HomeDashboard() {
           />
           <Card className={kpiCardClass}>
             <CardHeader className="space-y-1 pb-2 pt-5">
-              <p className="text-sm font-medium leading-snug text-muted-foreground">
-                Balance aprox.
-              </p>
-              <p className="text-xs leading-snug text-muted-foreground/90">
-                Ingresos por ventas − gastos del periodo
+              <p className="text-sm font-medium leading-snug text-primary-foreground/85">
+              Ingresos por ventas − gastos del periodo
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -661,7 +691,7 @@ export function HomeDashboard() {
                 className={cn(
                   "text-2xl font-semibold tabular-nums tracking-tight",
                   balanceActual >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
+                    ? "text-white dark:text-emerald-400"
                     : "text-red-600 dark:text-red-400",
                 )}>
                 {formatMoney(balanceActual, moneda)}
@@ -681,10 +711,162 @@ export function HomeDashboard() {
           />
         </div>
 
+        <Card >
+          <CardHeader className="space-y-1.5 pb-2">
+            <CardTitle className="text-lg font-bold tracking-tight ">
+              Ingreso neto estimado
+            </CardTitle>
+            <CardDescription className="text-sm leading-relaxed /80">
+              Ventas activas menos costo histórico vendido, gastos, depreciación prorrateada (mensual ÷ 30 ×{" "}
+              <span className="font-medium ">{diasRango}</span> días) y costo estimado de
+              mermas (cantidad × costo actual del producto al generar estas cifras).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid gap-6 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:items-start">
+              <div className="flex min-w-0 flex-col items-stretch gap-4">
+                <div className="space-y-2">
+                  <p
+                    className={cn(
+                      "text-3xl font-semibold tabular-nums tracking-tight",
+                      resumenNeto.ingresoNeto.actual >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400",
+                    )}>
+                    {formatMoney(resumenNeto.ingresoNeto.actual, moneda)}
+                  </p>
+                  <p className="text-xs leading-relaxed text-primary-foreground/75">
+                    Periodo anterior ({mesAnteriorLabel}):{" "}
+                    <span className="font-medium text-primary-foreground">
+                      {formatMoney(resumenNeto.ingresoNeto.anterior, moneda)}
+                    </span>
+                  </p>
+                  <MomBadge pct={resumenNeto.ingresoNeto.momPct} variant="onPrimary" />
+                </div>
+                <div className="flex w-full min-w-0 flex-col items-start border-t border-primary-foreground/20 pt-4">
+                  <p className="mb-2 text-left text-[11px] font-medium uppercase tracking-wide text-primary-foreground/70">
+                    Neto estimado · últimos 6 meses (calendario)
+                  </p>
+                  <div className="h-[160px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={netoEstimadoUltimos6Meses}
+                        margin={{ top: 8, right: 4, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          className="stroke-border"
+                          vertical={false}
+                        />
+                        <XAxis
+                          dataKey="mesCorto"
+                          tick={{ fontSize: 10 }}
+                          className="fill-muted-foreground"
+                          interval={0}
+                        />
+                        <YAxis width={32} tick={{ fontSize: 10 }} className="fill-muted-foreground" tickFormatter={(v) =>
+                          new Intl.NumberFormat("es-MX", {
+                            notation: "compact",
+                            compactDisplay: "short",
+                            maximumFractionDigits: 0,
+                          }).format(Number(v))
+                        } />
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1} />
+                        <Tooltip
+                          content={(props) => {
+                            if (!props.active || !props.payload?.length) return null;
+                            const row = props.payload[0]?.payload as {
+                              mesCorto?: string;
+                              monthKey?: string;
+                              ingresoNeto?: number;
+                            };
+                            const v = Number(row?.ingresoNeto ?? 0);
+                            return (
+                              <div className="rounded-md border bg-popover px-2.5 py-2 text-xs shadow-md">
+                                <p className="font-medium text-popover-foreground">
+                                  {String(row?.monthKey ?? "")} ({String(row?.mesCorto ?? "")})
+                                </p>
+                                <p
+                                  className={cn(
+                                    "tabular-nums",
+                                    v >= 0
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-red-600 dark:text-red-400",
+                                  )}
+                                >
+                                  {formatMoney(v, moneda)}
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="ingresoNeto" name="Ingreso neto est." radius={[3, 3, 0, 0]}>
+                          {netoEstimadoUltimos6Meses.map((p) => (
+                            <Cell
+                              key={p.monthKey}
+                              fill={p.ingresoNeto >= 0 ? NET_POSITIVE_BAR : NET_NEGATIVE_BAR}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+              <div className={kpiInsetPanelClass}>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-bold">
+                  Desglose del periodo
+                </p>
+                <ul className="space-y-2">
+                  <li className="flex justify-between gap-3 tabular-nums">
+                    <span className="text-muted-foreground font-">Ingresos por ventas</span>
+                    <span className="font-black text-foreground">
+                      {formatMoney(ingresos.actual, moneda)}
+                    </span>
+                  </li>
+                  <li className="flex justify-between gap-3 tabular-nums">
+                    <span className="text-muted-foreground">− Costo de ventas (histórico)</span>
+                    <span className="font-black text-foreground">
+                      −{formatMoney(resumenNeto.costoVentas.actual, moneda)}
+                    </span>
+                  </li>
+                  <li className="flex justify-between gap-3 tabular-nums">
+                    <span className="text-muted-foreground">− Gastos</span>
+                    <span className="font-black text-foreground">
+                      −{formatMoney(gastos.actual, moneda)}
+                    </span>
+                  </li>
+                  <li className="flex justify-between gap-3 tabular-nums">
+                    <span className="text-muted-foreground">− Depreciación estimada</span>
+                    <span className="font-black text-foreground">
+                      −{formatMoney(resumenNeto.depreciacionEstimada.actual, moneda)}
+                    </span>
+                  </li>
+                  <li className="flex justify-between gap-3 tabular-nums">
+                    <span className="text-muted-foreground">− Mermas (costo estimado)</span>
+                    <span className="font-black text-foreground">
+                      −{formatMoney(resumenNeto.costoMermas.actual, moneda)}
+                    </span>
+                  </li>
+                </ul>
+                <p className="border-t border-border/60 pt-2 text-xs leading-relaxed text-muted-foreground">
+                  Depreciación mensual en configuración:{" "}
+                  <span className="font-medium text-foreground/80">
+                    {formatMoney(resumenNeto.depreciacionMensual, moneda)}
+                  </span>
+                  . Ajusta ese monto en Configuración si tu ritmo de gasto no operativo es otro. Las mermas se registran
+                  en Operaciones → Mermas; su costo en este resumen usa el precio de costo vigente del catálogo, no el del
+                  día del movimiento.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 lg:grid-cols-5">
           <Card className={cn("lg:col-span-3", sectionCardClass)}>
             <CardHeader>
-              <CardTitle className={sectionTitleClass}>
+              <CardTitle className="text-base font-bold tracking-tight ">
                 Tendencia últimos 12 meses
               </CardTitle>
               <CardDescription className={sectionDescClass}>

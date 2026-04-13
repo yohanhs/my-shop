@@ -12,6 +12,7 @@ function toDto(row: {
   logoPath: string | null;
   imagenesDirDefault: string | null;
   fondoAppPath: string | null;
+  depreciacionMensual: number;
 }) {
   return {
     id: row.id,
@@ -21,6 +22,7 @@ function toDto(row: {
     logoPath: row.logoPath,
     imagenesDirDefault: row.imagenesDirDefault,
     fondoAppPath: row.fondoAppPath,
+    depreciacionMensual: row.depreciacionMensual,
   };
 }
 
@@ -79,6 +81,7 @@ export function registerConfiguracionIpc(): void {
         logoPath?: string | null;
         imagenesDirDefault?: string | null;
         fondoAppPath?: string | null;
+        depreciacionMensual?: number;
       },
     ) => {
       assertNotCajero();
@@ -89,6 +92,7 @@ export function registerConfiguracionIpc(): void {
         logoPath?: string | null;
         imagenesDirDefault?: string | null;
         fondoAppPath?: string | null;
+        depreciacionMensual?: number;
       } = {};
       if (data.nombreTienda !== undefined) payload.nombreTienda = data.nombreTienda.trim();
       if (data.moneda !== undefined) payload.moneda = data.moneda.trim().toUpperCase();
@@ -103,6 +107,10 @@ export function registerConfiguracionIpc(): void {
       }
       if (data.fondoAppPath !== undefined) {
         payload.fondoAppPath = normLogo(data.fondoAppPath) ?? null;
+      }
+      if (data.depreciacionMensual !== undefined) {
+        const n = Number(data.depreciacionMensual);
+        payload.depreciacionMensual = Number.isFinite(n) && n >= 0 ? n : 0;
       }
 
       const row = await prisma.configuracion.update({

@@ -11,6 +11,7 @@ import {
   Users,
   Wallet,
   ScanLine,
+  PackageX,
 } from 'lucide-react';
 
 import { AppTopBar } from '@/components/layout/AppTopBar';
@@ -59,6 +60,7 @@ const navSections: readonly NavSection[] = [
       { to: '/caja/ventas', label: 'Caja', icon: ScanLine, end: false },
       { to: '/ventas', label: 'Ventas', icon: ShoppingCart, end: false },
       { to: '/gastos', label: 'Gastos', icon: Wallet, end: false },
+      { to: '/mermas', label: 'Mermas', icon: PackageX, end: false },
     ],
   },
   {
@@ -146,7 +148,7 @@ export function AppShell() {
                   >
                     {section.title ? (
                       <p
-                        className="px-3 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                        className="px-3 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground italic"
                         role="presentation"
                       >
                         {section.title}
@@ -159,7 +161,7 @@ export function AppShell() {
                         end={end}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                            'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors uppercase',
                             isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'text-muted-foreground hover:bg-muted hover:text-foreground',

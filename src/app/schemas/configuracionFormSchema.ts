@@ -22,6 +22,11 @@ export const configuracionFormSchema = yup.object({
   logoPath: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
   imagenesDirDefault: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
   fondoAppPath: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
+  depreciacionMensual: yup
+    .number()
+    .typeError('Indica un monto válido o 0.')
+    .min(0, 'No puede ser negativo.')
+    .required('Obligatorio.'),
 });
 
 export type ConfiguracionFormValues = yup.InferType<typeof configuracionFormSchema>;
@@ -33,4 +38,5 @@ export const configuracionFormDefaults: ConfiguracionFormValues = {
   logoPath: '',
   imagenesDirDefault: '',
   fondoAppPath: '',
+  depreciacionMensual: 0,
 };

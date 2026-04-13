@@ -103,7 +103,8 @@ model MovimientoStock {
   productoId  Int       @map("producto_id")
   tipo        String    // ENTRADA | SALIDA
   cantidad    Int
-  motivo      String    // COMPRA | VENTA | AJUSTE
+  /** COMPRA | VENTA | AJUSTE | MERMA (merma = salida de inventario sin venta). */
+  motivo      String
   fecha       DateTime  @default(now())
   usuarioId   Int       @map("usuario_id")
   proveedorId Int?      @map("proveedor_id")
@@ -125,6 +126,8 @@ model Configuracion {
   imagenesDirDefault  String? @map("imagenes_dir_default")
   /** Imagen de fondo del panel (ruta local); se muestra difuminada detrás de la UI. */
   fondoAppPath        String? @map("fondo_app_path")
+  /** Depreciación mensual estimada (equipo, local, etc.); el inicio prorratea ~30 días/mes. */
+  depreciacionMensual  Float   @default(0) @map("depreciacion_mensual")
 
   @@map("configuracion")
 }

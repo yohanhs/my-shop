@@ -13,6 +13,8 @@ import { registerUsuarioIpc } from './ipc/usuario.ipc';
 import { registerGastoIpc } from './ipc/gasto.ipc';
 import { registerFileIpc } from './ipc/file.ipc';
 import { registerStatsIpc } from './ipc/stats.ipc';
+import { registerMermaIpc } from './ipc/merma.ipc';
+import { registerDatabaseIpc } from './ipc/database.ipc';
 import { registerVentaIpc } from './ipc/venta.ipc';
 import { registerAuthIpc, seedDefaultAuth } from './ipc/auth.ipc';
 import { getPrismaClient } from './db/client';
@@ -68,6 +70,7 @@ app.whenReady().then(async () => {
   registerShopImgHandler();
   registerAuthIpc();
   registerFileIpc();
+  registerDatabaseIpc();
   registerProductoIpc();
   registerProveedorIpc();
   registerConfiguracionIpc();
@@ -76,6 +79,7 @@ app.whenReady().then(async () => {
   registerVentaIpc();
   registerGastoIpc();
   registerStatsIpc();
+  registerMermaIpc();
   await createWindow();
 
   app.on('activate', () => {
