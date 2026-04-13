@@ -132,7 +132,7 @@ export function PerfilPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Mi perfil</h1>
         <p className="text-sm text-muted-foreground">
@@ -140,7 +140,7 @@ export function PerfilPage() {
         </p>
       </div>
 
-      <Card className="max-w-xl">
+      <Card>
         <CardHeader className="space-y-1">
           <CardTitle className="flex items-center gap-2 text-lg">
             <UserRound className="h-5 w-5 text-muted-foreground" aria-hidden />
