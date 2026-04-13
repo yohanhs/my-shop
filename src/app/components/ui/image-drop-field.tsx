@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useState } from 'react';
 import { ImageIcon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { localFileToImgSrc } from '@/lib/localImageSrc';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,23 +10,6 @@ import { Input } from '@/components/ui/input';
 function pathFromDroppedFile(file: File): string | null {
   const p = (file as File & { path?: string }).path;
   return typeof p === 'string' && p.trim().length > 0 ? p.trim() : null;
-}
-
-/** Vista previa local en Electron (sin depender del módulo `url` en el bundle del navegador). */
-function pathToLocalFileHref(absPath: string): string | null {
-  const trimmed = absPath.trim();
-  if (!trimmed) return null;
-  let p = trimmed.replace(/\\/g, '/');
-  if (/^[a-zA-Z]:\//.test(p)) {
-    p = `/${p}`;
-  } else if (!p.startsWith('/')) {
-    p = `/${p}`;
-  }
-  try {
-    return encodeURI(`file://${p}`).replace(/#/g, '%23');
-  } catch {
-    return null;
-  }
 }
 
 export interface ImageDropFieldProps {
@@ -91,7 +75,7 @@ export const ImageDropField = forwardRef<HTMLDivElement, ImageDropFieldProps>(fu
     [disabled, importFromPath],
   );
 
-  const src = value.trim() ? pathToLocalFileHref(value) : null;
+  const src = value.trim() ? localFileToImgSrc(value.trim()) ?? null : null;
 
   return (
     <div ref={ref} className={cn('space-y-3', className)}>

@@ -10,10 +10,12 @@ import { useAuth } from '@/providers/AuthProvider';
 export type AppTopBarProps = {
   /** `nombreTienda` de configuración, o {@link DEFAULT_NOMBRE_TIENDA} si no hay dato. */
   nombreTienda: string;
+  /** `caja`: mismo padding que la página Caja; `default`: con `max-w-7xl` como el resto del panel. */
+  variant?: 'default' | 'caja';
 };
 
 /** Barra superior global: tema, nombre de tienda y sesión (usuario / salir). */
-export function AppTopBar({ nombreTienda }: AppTopBarProps) {
+export function AppTopBar({ nombreTienda, variant = 'default' }: AppTopBarProps) {
   const { user, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -23,8 +25,18 @@ export function AppTopBar({ nombreTienda }: AppTopBarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card/90 px-4 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-card/75 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4">
+    <header
+      className={cn(
+        'sticky top-0 z-40 flex h-14 shrink-0 items-center border-b border-border bg-card/90 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-card/75',
+        variant === 'caja' ? 'px-3 sm:px-4 lg:px-6' : 'px-6',
+      )}
+    >
+      <div
+        className={cn(
+          'flex w-full items-center justify-between gap-4',
+          variant === 'caja' ? 'mx-auto max-w-[1920px]' : 'mx-auto max-w-7xl',
+        )}
+      >
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Panel</p>
           <p className="truncate text-sm font-semibold text-foreground sm:text-base">{nombreTienda}</p>

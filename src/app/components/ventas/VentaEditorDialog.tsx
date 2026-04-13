@@ -120,11 +120,11 @@ export function VentaEditorDialog({ open, onClose, mode, venta, onSuccess }: Ven
     setSubmitting(true);
     try {
       const payload = ventaFormToCreate(values);
-      const ok =
+      const saved =
         mode === 'edit' && venta
           ? await updateVenta(venta.id, payload)
           : await createVenta(payload);
-      if (ok) {
+      if (saved) {
         onSuccess?.();
         onClose();
       } else {

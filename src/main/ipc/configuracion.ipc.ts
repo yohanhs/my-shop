@@ -2,7 +2,7 @@ import { ipcMain } from 'electron';
 import { assertAuthenticated, assertNotCajero } from '../auth/sessionStore';
 import { getPrismaClient } from '../db/client';
 
-const CHANNELS = ['configuracion:get', 'configuracion:update'] as const;
+const CHANNELS = ['configuracion:get', 'configuracion:getPublicAmbient', 'configuracion:update'] as const;
 
 function toDto(row: {
   id: number;
@@ -11,6 +11,7 @@ function toDto(row: {
   impuestoPorcentaje: number;
   logoPath: string | null;
   imagenesDirDefault: string | null;
+  fondoAppPath: string | null;
 }) {
   return {
     id: row.id,
@@ -19,6 +20,7 @@ function toDto(row: {
     impuestoPorcentaje: row.impuestoPorcentaje,
     logoPath: row.logoPath,
     imagenesDirDefault: row.imagenesDirDefault,
+    fondoAppPath: row.fondoAppPath,
   };
 }
 
@@ -56,6 +58,15 @@ export function registerConfiguracionIpc(): void {
     return toDto(row);
   });
 
+  /** Solo ruta de fondo: lectura sin sesión (pantalla de login y capa visual). */
+  ipcMain.handle('configuracion:getPublicAmbient', async () => {
+    const row = await prisma.configuracion.findFirst({
+      orderBy: { id: 'asc' },
+      select: { fondoAppPath: true },
+    });
+    return { fondoAppPath: row?.fondoAppPath ?? null };
+  });
+
   ipcMain.handle(
     'configuracion:update',
     async (
@@ -67,6 +78,7 @@ export function registerConfiguracionIpc(): void {
         impuestoPorcentaje?: number;
         logoPath?: string | null;
         imagenesDirDefault?: string | null;
+        fondoAppPath?: string | null;
       },
     ) => {
       assertNotCajero();
@@ -76,6 +88,7 @@ export function registerConfiguracionIpc(): void {
         impuestoPorcentaje?: number;
         logoPath?: string | null;
         imagenesDirDefault?: string | null;
+        fondoAppPath?: string | null;
       } = {};
       if (data.nombreTienda !== undefined) payload.nombreTienda = data.nombreTienda.trim();
       if (data.moneda !== undefined) payload.moneda = data.moneda.trim().toUpperCase();
@@ -87,6 +100,9 @@ export function registerConfiguracionIpc(): void {
       }
       if (data.imagenesDirDefault !== undefined) {
         payload.imagenesDirDefault = normImagenesDir(data.imagenesDirDefault) ?? null;
+      }
+      if (data.fondoAppPath !== undefined) {
+        payload.fondoAppPath = normLogo(data.fondoAppPath) ?? null;
       }
 
       const row = await prisma.configuracion.update({

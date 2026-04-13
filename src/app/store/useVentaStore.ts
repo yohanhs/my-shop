@@ -6,6 +6,7 @@ import {
   defaultProductoListFilters,
   defaultVentaListFilters,
   type Producto,
+  type VentaConDetalles,
   type VentaCreateInput,
   type VentaListFilters,
   type VentaListItem,
@@ -40,8 +41,8 @@ interface VentaStore {
   setPage: (page: number) => Promise<void>;
   setPageSize: (pageSize: number) => Promise<void>;
   clearError: () => void;
-  createVenta: (data: VentaCreateInput) => Promise<boolean>;
-  updateVenta: (id: number, data: VentaCreateInput) => Promise<boolean>;
+  createVenta: (data: VentaCreateInput) => Promise<VentaConDetalles | null>;
+  updateVenta: (id: number, data: VentaCreateInput) => Promise<VentaConDetalles | null>;
   anularVenta: (id: number, usuarioId?: number) => Promise<boolean>;
 }
 
@@ -123,20 +124,20 @@ export const useVentaStore = create<VentaStore>((set, get) => ({
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
-      return false;
+      return null;
     }
     set({ error: null });
     try {
-      await api.create(data);
+      const created = await api.create(data);
       await get().fetchVentas({ silent: true });
       await useProductStore.getState().fetchProductos({ silent: true });
       toast.success('Venta registrada');
-      return true;
+      return created;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
       toast.error('No se pudo registrar la venta', { description: msg });
-      return false;
+      return null;
     }
   },
 
@@ -144,20 +145,20 @@ export const useVentaStore = create<VentaStore>((set, get) => ({
     const api = getApi();
     if (!api) {
       toast.error(NO_ELECTRON_TOAST);
-      return false;
+      return null;
     }
     set({ error: null });
     try {
-      await api.update(id, data);
+      const updated = await api.update(id, data);
       await get().fetchVentas({ silent: true });
       await useProductStore.getState().fetchProductos({ silent: true });
       toast.success('Venta actualizada');
-      return true;
+      return updated;
     } catch (err) {
       const msg = (err as Error).message;
       set({ error: msg });
       toast.error('No se pudo actualizar la venta', { description: msg });
-      return false;
+      return null;
     }
   },
 

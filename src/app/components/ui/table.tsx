@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto">
+    <div className="relative w-full overflow-auto px-2 py-2 sm:px-4 sm:py-3">
       <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
     </div>
   ),
@@ -12,7 +12,16 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => <thead ref={ref} className={cn('[&_tr]:border-b', className)} {...props} />,
+  ({ className, ...props }, ref) => (
+    <thead
+      ref={ref}
+      className={cn(
+        'border-b border-border bg-muted/55 shadow-sm dark:bg-muted/30 [&_tr]:border-b-0',
+        className,
+      )}
+      {...props}
+    />
+  ),
 );
 TableHeader.displayName = 'TableHeader';
 
@@ -39,7 +48,8 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
     <th
       ref={ref}
       className={cn(
-        'h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+        'min-h-11 px-3 py-3.5 text-left align-middle text-sm font-semibold tracking-tight text-foreground sm:px-4 sm:py-4',
+        '[&:has([role=checkbox])]:w-10 [&:has([role=checkbox])]:px-2 [&:has([role=checkbox])]:pr-0 sm:[&:has([role=checkbox])]:px-3 [&>[role=checkbox]]:translate-y-[2px]',
         className,
       )}
       {...props}
@@ -52,7 +62,10 @@ const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<
   ({ className, ...props }, ref) => (
     <td
       ref={ref}
-      className={cn('p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]', className)}
+      className={cn(
+        'px-3 py-3 align-middle sm:px-4 sm:py-3.5 [&:has([role=checkbox])]:w-10 [&:has([role=checkbox])]:px-2 [&:has([role=checkbox])]:pr-0 sm:[&:has([role=checkbox])]:px-3 [&>[role=checkbox]]:translate-y-[2px]',
+        className,
+      )}
       {...props}
     />
   ),

@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -10,6 +10,7 @@ import {
   UserCircle,
   Users,
   Wallet,
+  ScanLine,
 } from 'lucide-react';
 
 import { AppTopBar } from '@/components/layout/AppTopBar';
@@ -18,6 +19,7 @@ import {
   SHOP_CONFIG_UPDATED_EVENT,
   resolveNombreTienda,
 } from '@/lib/shopBranding';
+import { cajeroCanSeeNavTo, isCajeroRole } from '@/lib/cajeroAccess';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -54,6 +56,7 @@ const navSections: readonly NavSection[] = [
     id: 'operaciones',
     title: 'Operaciones',
     items: [
+      { to: '/caja/ventas', label: 'Caja', icon: ScanLine, end: false },
       { to: '/ventas', label: 'Ventas', icon: ShoppingCart, end: false },
       { to: '/gastos', label: 'Gastos', icon: Wallet, end: false },
     ],
@@ -69,18 +72,24 @@ const navSections: readonly NavSection[] = [
 ] as const;
 
 const SUPERADMIN_PATHS = new Set(['/usuarios']);
-const CAJERO_NAV_PATHS = new Set(['/ventas', '/perfil']);
 
 function canSeeNavPath(rolNombre: string | undefined, to: string): boolean {
-  if (rolNombre === 'Cajero') {
-    return CAJERO_NAV_PATHS.has(to) || to.startsWith('/ventas/');
+  if (isCajeroRole(rolNombre)) {
+    return cajeroCanSeeNavTo(to);
   }
   if (SUPERADMIN_PATHS.has(to)) return rolNombre === 'SuperAdmin';
   return true;
 }
 
+function isVentaCajaPath(pathname: string): boolean {
+  const p = pathname.replace(/\/+$/, '') || '/';
+  return p === '/caja/ventas' || p === '/ventas/caja';
+}
+
 export function AppShell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  const posCajaFullBleed = isVentaCajaPath(pathname);
   const [nombreTienda, setNombreTienda] = useState(DEFAULT_NOMBRE_TIENDA);
 
   useEffect(() => {
@@ -114,62 +123,79 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <AppTopBar nombreTienda={nombreTienda} />
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card">
-          <nav className="flex flex-1 flex-col gap-0 p-2 pb-4 pt-3" aria-label="Navegación principal">
-            {navSections
-              .map((section) => ({
-                ...section,
-                items: section.items.filter(({ to }) => canSeeNavPath(user?.rolNombre, to)),
-              }))
-              .filter((section) => section.items.length > 0)
-              .map((section, sectionIndex) => (
+    <div className="relative isolate flex h-[100dvh] min-h-0 w-full flex-col overflow-hidden">
+      <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+        <aside className="flex w-56 shrink-0 flex-col border-r border-border/80 bg-card/75 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-card/65 dark:border-border/60">
+            <nav
+              className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-contain p-2 pb-4 pt-3"
+              aria-label="Navegación principal"
+            >
+              {navSections
+                .map((section) => ({
+                  ...section,
+                  items: section.items.filter(({ to }) => canSeeNavPath(user?.rolNombre, to)),
+                }))
+                .filter((section) => section.items.length > 0)
+                .map((section, sectionIndex) => (
+                  <div
+                    key={section.id}
+                    className={cn(
+                      'space-y-1',
+                      sectionIndex > 0 && 'mt-3 border-t border-border pt-3',
+                    )}
+                  >
+                    {section.title ? (
+                      <p
+                        className="px-3 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+                        role="presentation"
+                      >
+                        {section.title}
+                      </p>
+                    ) : null}
+                    {section.items.map(({ to, label, icon: Icon, end }) => (
+                      <NavLink
+                        key={to}
+                        to={to}
+                        end={end}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                          )
+                        }
+                      >
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                        {label}
+                      </NavLink>
+                    ))}
+                  </div>
+                ))}
+            </nav>
+          </aside>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <AppTopBar
+              nombreTienda={nombreTienda}
+              variant={posCajaFullBleed ? 'caja' : 'default'}
+            />
+            <main
+              className={cn(
+                'flex min-h-0 flex-1 flex-col',
+                posCajaFullBleed ? 'overflow-hidden' : 'overflow-auto p-6',
+              )}
+            >
               <div
-                key={section.id}
                 className={cn(
-                  'space-y-1',
-                  sectionIndex > 0 && 'mt-3 border-t border-border pt-3',
+                  posCajaFullBleed
+                    ? 'flex min-h-0 min-w-0 flex-1 flex-col'
+                    : 'mx-auto w-full max-w-7xl',
                 )}
               >
-                {section.title ? (
-                  <p
-                    className="px-3 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-                    role="presentation"
-                  >
-                    {section.title}
-                  </p>
-                ) : null}
-                {section.items.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                        isActive
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )
-                    }
-                  >
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {label}
-                  </NavLink>
-                ))}
+                <Outlet />
               </div>
-            ))}
-          </nav>
-        </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <main className="flex-1 overflow-auto p-6">
-            <div className="mx-auto max-w-7xl">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+            </main>
+          </div>
       </div>
     </div>
   );

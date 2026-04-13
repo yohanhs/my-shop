@@ -118,7 +118,7 @@ function HomeDashboardRangeToolbar({
   const fieldsOff = disableFields === true || fetching;
 
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-3">
+    <div className="rounded-xl border border-border/80 bg-card/75 p-3 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2">
         <div className="flex gap-2 sm:gap-2">
           <div className="grid gap-1">
@@ -202,12 +202,22 @@ function HomeDashboardRangeToolbar({
   );
 }
 
+/** Alineado con `--primary` en globals (azul más sobrio). */
+const CHART_PRIMARY = "hsl(222 52% 50%)";
+
 const PIE_COLORS = [
-  "hsl(239 84% 57%)",
+  CHART_PRIMARY,
   "hsl(142 76% 36%)",
   "hsl(38 92% 50%)",
   "hsl(280 65% 48%)",
 ];
+
+/** KPI: superficie única, sin franja de color (más limpio). */
+const kpiCardClass = "shadow-sm transition-shadow hover:shadow-md";
+const sectionCardClass =
+  "shadow-sm transition-shadow hover:shadow-md";
+const sectionTitleClass = "text-base font-semibold tracking-tight text-foreground/80 dark:text-foreground/85";
+const sectionDescClass = "text-sm leading-relaxed text-muted-foreground";
 
 function CaducidadProximaTable({
   rows,
@@ -430,21 +440,19 @@ function KpiCard({
   invertMom?: boolean;
 }) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="space-y-1 pb-2">
-        <CardDescription className="text-xs font-medium uppercase tracking-wide">
-          {title}
-        </CardDescription>
+    <Card className={kpiCardClass}>
+      <CardHeader className="space-y-1 pb-2 pt-5">
+        <p className="text-sm font-medium leading-snug text-muted-foreground">{title}</p>
         {subtitle ? (
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+          <p className="text-xs leading-snug text-muted-foreground/90">{subtitle}</p>
         ) : null}
       </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="text-2xl font-semibold tabular-nums tracking-tight">
+      <CardContent className="space-y-2 pt-0">
+        <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
           {value}
         </p>
         {secondary ? (
-          <p className="text-xs text-muted-foreground">{secondary}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">{secondary}</p>
         ) : null}
         <MomBadge pct={momPct} invert={invertMom} />
       </CardContent>
@@ -613,16 +621,14 @@ export function HomeDashboard() {
           fetching && "pointer-events-none opacity-60",
         )}>
         <div>
-          <h3 className="text-lg font-semibold tracking-tight">Resumen</h3>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground/85">
+            Resumen
+          </h3>
+          <p className="text-sm leading-relaxed text-muted-foreground">
             Cifras de{" "}
-            <span className="font-medium text-foreground">
-              {mesActualLabel}
-            </span>{" "}
+            <span className="font-medium text-foreground/80">{mesActualLabel}</span>{" "}
             · Comparativa vs{" "}
-            <span className="font-medium text-foreground">
-              {mesAnteriorLabel}
-            </span>{" "}
+            <span className="font-medium text-foreground/80">{mesAnteriorLabel}</span>{" "}
             (misma duración en días; solo ventas activas).
           </p>
         </div>
@@ -641,16 +647,16 @@ export function HomeDashboard() {
             momPct={gastos.momPct}
             invertMom
           />
-          <Card className="overflow-hidden">
-            <CardHeader className="space-y-1 pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wide">
+          <Card className={kpiCardClass}>
+            <CardHeader className="space-y-1 pb-2 pt-5">
+              <p className="text-sm font-medium leading-snug text-muted-foreground">
                 Balance aprox.
-              </CardDescription>
-              <p className="text-[11px] text-muted-foreground">
+              </p>
+              <p className="text-xs leading-snug text-muted-foreground/90">
                 Ingresos por ventas − gastos del periodo
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <p
                 className={cn(
                   "text-2xl font-semibold tabular-nums tracking-tight",
@@ -676,12 +682,12 @@ export function HomeDashboard() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-5">
-          <Card className="lg:col-span-3">
+          <Card className={cn("lg:col-span-3", sectionCardClass)}>
             <CardHeader>
-              <CardTitle className="text-base">
+              <CardTitle className={sectionTitleClass}>
                 Tendencia últimos 12 meses
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={sectionDescClass}>
                 Ingresos por ventas y gastos por mes calendario; el último mes
                 es el de la fecha «Hasta».
               </CardDescription>
@@ -724,7 +730,7 @@ export function HomeDashboard() {
                           {props.payload.map((p) => (
                             <p
                               key={String(p.dataKey)}
-                              className="text-foreground">
+                              className="text-muted-foreground">
                               {p.name}: {formatMoney(Number(p.value), moneda)}
                             </p>
                           ))}
@@ -736,7 +742,7 @@ export function HomeDashboard() {
                   <Bar
                     dataKey="ingresos"
                     name="Ingresos"
-                    fill="hsl(239 84% 57%)"
+                    fill={CHART_PRIMARY}
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
@@ -750,12 +756,12 @@ export function HomeDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
+          <Card className={cn("lg:col-span-2", sectionCardClass)}>
             <CardHeader>
-              <CardTitle className="text-base">
+              <CardTitle className={sectionTitleClass}>
                 Ventas por método de pago
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={sectionDescClass}>
                 Distribución en el periodo seleccionado.
               </CardDescription>
             </CardHeader>
@@ -796,12 +802,12 @@ export function HomeDashboard() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
+          <Card className={sectionCardClass}>
             <CardHeader>
-              <CardTitle className="text-base">
+              <CardTitle className={sectionTitleClass}>
                 Productos más vendidos
               </CardTitle>
-              <CardDescription>
+              <CardDescription className={sectionDescClass}>
                 Top 10 por unidades en el periodo (ventas activas). Orden
                 descendente por cantidad.
               </CardDescription>
@@ -815,10 +821,10 @@ export function HomeDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={sectionCardClass}>
             <CardHeader>
-              <CardTitle className="text-base">Menor rotación</CardTitle>
-              <CardDescription>
+              <CardTitle className={sectionTitleClass}>Menor rotación</CardTitle>
+              <CardDescription className={sectionDescClass}>
                 10 productos con menos unidades vendidas entre los que sí
                 vendieron en el periodo (menos unidades arriba). No incluye
                 productos sin ventas en el periodo.
@@ -834,10 +840,10 @@ export function HomeDashboard() {
           </Card>
         </div>
 
-        <Card>
+        <Card className={sectionCardClass}>
           <CardHeader>
-            <CardTitle className="text-base">Próximos a caducar</CardTitle>
-            <CardDescription>
+            <CardTitle className={sectionTitleClass}>Próximos a caducar</CardTitle>
+            <CardDescription className={sectionDescClass}>
               10 productos con stock activo, ordenados por fecha de caducidad
               más cercana. Rojo: vencidos; naranja: próximos a vencer (dentro
               del rango del filtro).

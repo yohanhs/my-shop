@@ -166,6 +166,12 @@ export interface Configuracion {
   logoPath: string | null;
   /** Carpeta donde se copian imágenes importadas; null = carpeta interna de la app. */
   imagenesDirDefault: string | null;
+  /** Ruta local de imagen de fondo del panel (difuminada); null = solo degradado. */
+  fondoAppPath: string | null;
+}
+
+export interface ConfiguracionAmbientPublic {
+  fondoAppPath: string | null;
 }
 
 export interface ConfiguracionUpdateInput {
@@ -174,10 +180,12 @@ export interface ConfiguracionUpdateInput {
   impuestoPorcentaje?: number;
   logoPath?: string | null;
   imagenesDirDefault?: string | null;
+  fondoAppPath?: string | null;
 }
 
 export interface ConfiguracionApi {
   get: () => Promise<Configuracion>;
+  getPublicAmbient: () => Promise<ConfiguracionAmbientPublic>;
   update: (id: number, data: ConfiguracionUpdateInput) => Promise<Configuracion>;
 }
 

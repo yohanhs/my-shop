@@ -150,6 +150,21 @@ async function ensureConfiguracionImagenesDirColumn(client: PrismaClient): Promi
   console.log('[DB] Columna configuracion.imagenes_dir_default añadida (migración incremental).');
 }
 
+async function ensureConfiguracionFondoAppPathColumn(client: PrismaClient): Promise<void> {
+  const tables: Array<{ name: string }> = await client.$queryRawUnsafe(
+    `SELECT name FROM sqlite_master WHERE type='table' AND name='configuracion'`,
+  );
+  if (tables.length === 0) return;
+
+  const columns = await client.$queryRawUnsafe<Array<{ name: string }>>(
+    `PRAGMA table_info(configuracion)`,
+  );
+  if (columns.some((c) => c.name === 'fondo_app_path')) return;
+
+  await client.$executeRawUnsafe(`ALTER TABLE configuracion ADD COLUMN fondo_app_path TEXT`);
+  console.log('[DB] Columna configuracion.fondo_app_path añadida (migración incremental).');
+}
+
 async function ensureProductoFechaCaducidadColumn(client: PrismaClient): Promise<void> {
   const tables: Array<{ name: string }> = await client.$queryRawUnsafe(
     `SELECT name FROM sqlite_master WHERE type='table' AND name='productos'`,
@@ -203,6 +218,7 @@ export async function initializeDatabase(): Promise<PrismaClient> {
   await ensureAuthTables(client);
   await ensureProductoDescripcionColumn(client);
   await ensureConfiguracionImagenesDirColumn(client);
+  await ensureConfiguracionFondoAppPathColumn(client);
   await ensureProductoFechaCaducidadColumn(client);
   await ensureVentaUsuarioIdColumn(client);
   return client;

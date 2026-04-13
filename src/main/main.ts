@@ -1,5 +1,9 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+
+import { registerShopImgHandler, registerShopImgPrivileges } from './protocols/shopImgProtocol';
+
+registerShopImgPrivileges();
 import { initializeDatabase, disconnectPrisma } from './db/client';
 import { registerConfiguracionIpc } from './ipc/configuracion.ipc';
 import { registerProductoIpc } from './ipc/producto.ipc';
@@ -61,6 +65,7 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  registerShopImgHandler();
   registerAuthIpc();
   registerFileIpc();
   registerProductoIpc();

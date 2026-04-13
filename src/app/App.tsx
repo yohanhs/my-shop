@@ -1,6 +1,7 @@
 import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { AppShell } from './components/layout/AppShell';
+import { ShopAppBackground } from './components/layout/ShopAppBackground';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './providers/AuthProvider';
 import { HomePage } from './pages/HomePage';
@@ -14,6 +15,8 @@ import { VentaDetallePage } from './pages/VentaDetallePage';
 import { VentaPrintTicketPage } from './pages/VentaPrintTicketPage';
 import { PerfilPage } from './pages/PerfilPage';
 import { VentasPage } from './pages/VentasPage';
+import { VentaCajaPage } from './pages/VentaCajaPage';
+import { cajeroCanAccessPathname, isCajeroRole } from './lib/cajeroAccess';
 
 function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -24,15 +27,14 @@ function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-/** Cajero: solo `#/ventas`, `#/ventas/:id` y `#/perfil`; el resto redirige a ventas. */
+/** Cajero: ventas, caja (`#/caja/…`), perfil; el resto redirige a ventas. */
 function CajeroRouteGate() {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  if (!user || user.rolNombre !== 'Cajero') {
+  if (!user || !isCajeroRole(user.rolNombre)) {
     return <Outlet />;
   }
-  const p = pathname.replace(/\/+$/, '') || '/';
-  if (p === '/perfil' || p === '/ventas' || p.startsWith('/ventas/')) {
+  if (cajeroCanAccessPathname(pathname)) {
     return <Outlet />;
   }
   return <Navigate to="/ventas" replace />;
@@ -57,6 +59,8 @@ function AppRoutes() {
                 </RequireSuperAdmin>
               }
             />
+            <Route path="ventas/caja" element={<Navigate to="/caja/ventas" replace />} />
+            <Route path="caja/ventas" element={<VentaCajaPage />} />
             <Route path="ventas/:id" element={<VentaDetallePage />} />
             <Route path="ventas" element={<VentasPage />} />
             <Route path="gastos" element={<GastosPage />} />
@@ -74,9 +78,10 @@ export default function App() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="relative isolate flex min-h-screen items-center justify-center">
+        <ShopAppBackground />
         <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"
+          className="relative z-10 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent"
           aria-hidden
         />
       </div>
@@ -84,8 +89,18 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return (
+      <div className="relative isolate min-h-screen">
+        <ShopAppBackground />
+        <LoginPage />
+      </div>
+    );
   }
 
-  return <AppRoutes />;
+  return (
+    <div className="relative isolate min-h-screen">
+      <ShopAppBackground />
+      <AppRoutes />
+    </div>
+  );
 }

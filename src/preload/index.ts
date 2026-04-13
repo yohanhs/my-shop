@@ -67,6 +67,7 @@ export interface ConfiguracionUpdateInput {
   impuestoPorcentaje?: number;
   logoPath?: string | null;
   imagenesDirDefault?: string | null;
+  fondoAppPath?: string | null;
 }
 
 export interface VentaLineaInput {
@@ -130,6 +131,7 @@ const proveedorApi = {
 
 const configuracionApi = {
   get: () => ipcRenderer.invoke('configuracion:get'),
+  getPublicAmbient: () => ipcRenderer.invoke('configuracion:getPublicAmbient'),
   update: (id: number, data: ConfiguracionUpdateInput) =>
     ipcRenderer.invoke('configuracion:update', id, data),
 };

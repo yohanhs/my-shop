@@ -123,6 +123,8 @@ model Configuracion {
   logoPath            String? @map("logo_path")
   /** Carpeta donde se copian imágenes importadas (productos, logo). Vacío = carpeta interna de la app. */
   imagenesDirDefault  String? @map("imagenes_dir_default")
+  /** Imagen de fondo del panel (ruta local); se muestra difuminada detrás de la UI. */
+  fondoAppPath        String? @map("fondo_app_path")
 
   @@map("configuracion")
 }

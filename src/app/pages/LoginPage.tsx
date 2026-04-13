@@ -37,8 +37,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-lg backdrop-blur-2xl supports-[backdrop-filter]:bg-card/75">
         <CardHeader className="space-y-1">
           <CardTitle className="text-xl">Iniciar sesión</CardTitle>
         </CardHeader>

@@ -1,23 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
+import { localFileToImgSrc } from '@/lib/localImageSrc';
 import type { Configuracion, VentaConDetalles } from '@/types/electron';
-
-function pathToLocalFileHref(absPath: string): string | null {
-  const trimmed = absPath.trim();
-  if (!trimmed) return null;
-  let p = trimmed.replace(/\\/g, '/');
-  if (/^[a-zA-Z]:\//.test(p)) {
-    p = `/${p}`;
-  } else if (!p.startsWith('/')) {
-    p = `/${p}`;
-  }
-  try {
-    return encodeURI(`file://${p}`).replace(/#/g, '%23');
-  } catch {
-    return null;
-  }
-}
 
 function formatMoney(amount: number, moneda: string): string {
   try {
@@ -179,7 +164,7 @@ export function VentaPrintTicketPage() {
     };
   }, [id]);
 
-  const logoHref = config?.logoPath ? pathToLocalFileHref(config.logoPath) : null;
+  const logoHref = config?.logoPath ? localFileToImgSrc(config.logoPath) ?? null : null;
 
   const subtotalLineas = useMemo(() => {
     if (!venta) return 0;

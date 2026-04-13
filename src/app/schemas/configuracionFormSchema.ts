@@ -21,6 +21,7 @@ export const configuracionFormSchema = yup.object({
     .required('Obligatorio.'),
   logoPath: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
   imagenesDirDefault: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
+  fondoAppPath: yup.string().trim().max(500, 'Máximo 500 caracteres.').default(''),
 });
 
 export type ConfiguracionFormValues = yup.InferType<typeof configuracionFormSchema>;
@@ -31,4 +32,5 @@ export const configuracionFormDefaults: ConfiguracionFormValues = {
   impuestoPorcentaje: 16,
   logoPath: '',
   imagenesDirDefault: '',
+  fondoAppPath: '',
 };

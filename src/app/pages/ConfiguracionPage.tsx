@@ -33,6 +33,7 @@ function mapToFormValues(c: Configuracion): ConfiguracionFormValues {
     impuestoPorcentaje: c.impuestoPorcentaje,
     logoPath: c.logoPath ?? '',
     imagenesDirDefault: c.imagenesDirDefault ?? '',
+    fondoAppPath: c.fondoAppPath ?? '',
   };
 }
 
@@ -95,6 +96,7 @@ export function ConfiguracionPage() {
         logoPath: values.logoPath.trim() === '' ? null : values.logoPath.trim(),
         imagenesDirDefault:
           values.imagenesDirDefault.trim() === '' ? null : values.imagenesDirDefault.trim(),
+        fondoAppPath: values.fondoAppPath.trim() === '' ? null : values.fondoAppPath.trim(),
       });
       toast.success('Configuración guardada');
       dispatchShopConfigUpdated();
@@ -288,6 +290,29 @@ export function ConfiguracionPage() {
                       />
                     </FormControl>
                     <FormDescription>Se guarda en la base de datos la ruta del archivo copiado.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="fondoAppPath"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Imagen de fondo del panel (opcional)</FormLabel>
+                    <FormControl>
+                      <ImageDropField
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        disabled={saving}
+                        browseLabel="Elegir imagen de fondo…"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Se muestra detrás de toda la aplicación con desenfoque y una capa semitransparente para que el
+                      texto siga siendo legible. Deja vacío para usar solo el degradado decorativo.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
